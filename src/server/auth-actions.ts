@@ -97,3 +97,19 @@ export async function loginAdminAction(prevState: any, formData: FormData) {
     redirect('/adminromanovskins');
 }
 
+
+export async function getCurrentUser() {
+    const cookieStore = await cookies();
+    const userId = cookieStore.get('romanov_user')?.value;
+
+    if (!userId) return null;
+
+    const supabase = await createClient();
+    const { data: user } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', userId)
+        .single();
+
+    return user;
+}
