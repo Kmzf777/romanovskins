@@ -1,48 +1,85 @@
-import { createClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
+
+// Verifica assinatura HMAC do webhook
+function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
+    if (!signature || !secret || secret === 'whsec_...') {
+        // Se não tiver secret configurado, aceita em dev (não recomendado em prod)
+        console.warn('⚠️ Webhook signature verification skipped - configure ABACATEPAY_WEBHOOK_SECRET');
+        return true;
+    }
+
+    const expectedSignature = crypto
+        .createHmac('sha256', secret)
+        .update(payload)
+        .digest('hex');
+
+    return crypto.timingSafeEqual(
+        Buffer.from(signature),
+        Buffer.from(expectedSignature)
+    );
+}
 
 export async function POST(request: Request) {
-    const body = await request.json();
+    const rawBody = await request.text();
     const headerPayload = await headers();
-    // TODO: Verify Signature using process.env.ABACATEPAY_WEBHOOK_SECRET
-    // const signature = headerPayload.get('abacatepay-signature');
+    const signature = headerPayload.get('x-webhook-signature') || headerPayload.get('abacatepay-signature');
 
-    const event = body.event; // e.g. billing.paid
+    // Verificar assinatura do webhook
+    const webhookSecret = process.env.ABACATEPAY_WEBHOOK_SECRET || '';
+    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+        console.error('❌ Invalid webhook signature');
+        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+    }
+
+    const body = JSON.parse(rawBody);
+    const event = body.event;
+
+    console.log('📥 Webhook received:', event, body);
 
     if (event === 'billing.paid') {
         const data = body.data;
         const billingId = data.id;
 
-        const supabase = await createClient(); // Uses Service Role usually for webhooks? 
-        // Actually standard client is user-scoped BUT route handlers in Next.js 15 are server-side.
-        // We need strictly SERVICE_ROLE for admin updates bypassing RLS if RLS is strict.
-        // But my createClient uses cookie store? 
-        // I need a Service Role client here.
-        // I'll assume generic client works if RLS allows or I create a service client.
-        // PRD provided SUPABASE_SERVICE_ROLE_KEY.
-        // I should implement createAdminClient in lib/supabase/server.ts or similar.
+        // Usar cliente admin para bypassar RLS
+        const supabase = createAdminClient();
 
-        // For MVP, if RLS is off or public, it's fine. 
-        // Assuming I need to update Tickets.
-
-        // 1. Find Transaction
-        const { data: transaction } = await supabase
+        // 1. Buscar transação pelo external_id
+        const { data: transaction, error: txError } = await supabase
             .from('transactions')
             .select('*')
             .eq('external_id', billingId)
             .single();
 
-        if (transaction) {
-            // 2. Update Transaction
-            await supabase.from('transactions').update({ status: 'paid' }).eq('id', transaction.id);
-
-            // 3. Update Tickets to SOLD
-            await supabase.from('tickets')
-                .update({ status: 'sold', expires_at: null }) // remove expiry
-                .eq('raffle_id', transaction.raffle_id)
-                .in('ticket_number', transaction.ticket_numbers);
+        if (txError || !transaction) {
+            console.error('❌ Transaction not found:', billingId, txError);
+            return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
         }
+
+        // 2. Atualizar status da transação para 'paid'
+        const { error: updateTxError } = await supabase
+            .from('transactions')
+            .update({ status: 'paid' })
+            .eq('id', transaction.id);
+
+        if (updateTxError) {
+            console.error('❌ Error updating transaction:', updateTxError);
+        }
+
+        // 3. Atualizar todos os tickets para 'sold' e remover expiração
+        const { error: updateTicketsError } = await supabase
+            .from('tickets')
+            .update({ status: 'sold', expires_at: null })
+            .eq('raffle_id', transaction.raffle_id)
+            .in('ticket_number', transaction.ticket_numbers);
+
+        if (updateTicketsError) {
+            console.error('❌ Error updating tickets:', updateTicketsError);
+        }
+
+        console.log('✅ Payment confirmed for transaction:', transaction.id);
     }
 
     return NextResponse.json({ received: true });

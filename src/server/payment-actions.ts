@@ -2,10 +2,9 @@
 
 import { abacatePay } from '@/lib/abacatepay';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 
-export async function createCheckoutAction(raffleId: string) { // Renamed to Action for consistency, though Plan said Actions
+export async function createCheckoutAction(raffleId: string) {
     const supabase = await createClient();
     const cookieStore = await cookies();
     const userId = cookieStore.get('romanov_user')?.value;
@@ -40,13 +39,11 @@ export async function createCheckoutAction(raffleId: string) { // Renamed to Act
     if (!raffle) return { error: 'Rifa não encontrada' };
 
     const totalAmount = tickets.length * raffle.price_per_ticket;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://romanovdasrifas.vercel.app';
 
     try {
-        // Create Billing on AbacatePay
-        // Note: Amount in cents usually? Or float? AbacatePay docs vary. 
-        // Assuming integer cents is common standard, but implementation plan didn't specify.
-        // If SDK is axios instance, we call endpoints.
-        // Constructing payload based on standard payment gateway patterns.
+        // Formatar telefone para padrão E.164 (remover caracteres especiais)
+        const formattedPhone = user.whatsapp.replace(/\D/g, '');
 
         const payload = {
             frequency: 'ONE_TIME',
@@ -56,36 +53,59 @@ export async function createCheckoutAction(raffleId: string) { // Renamed to Act
                     externalId: raffleId,
                     name: `Rifa: ${raffle.title}`,
                     quantity: tickets.length,
-                    price: Math.round(raffle.price_per_ticket * 100), // Cents logic
+                    price: Math.round(raffle.price_per_ticket * 100), // Valor em centavos
                 }
             ],
-            returnUrl: `${process.env.NEXT_PUBLIC_APP_URL}/rifa/${raffleId}`,
-            completionUrl: `${process.env.NEXT_PUBLIC_APP_URL}/rifa/${raffleId}`,
+            returnUrl: `${appUrl}/rifa/${raffleId}`,
+            completionUrl: `${appUrl}/rifa/${raffleId}?success=true`,
             customer: {
                 name: user.name,
-                cellPhone: user.whatsapp,
-                email: `${user.whatsapp}@romanov.com.br`, // Fallback email
-                taxId: '00000000000' // Placeholder CPF if required. Ideally ask user.
+                cellPhone: formattedPhone,
+                email: `${formattedPhone}@romanov.com.br`,
+                taxId: '00000000000'
             }
         };
 
-        const response = await abacatePay.post('/billing/create', payload);
-        const billingUrl = response.data.url; // Adjust based on actual API response structure
+        console.log('📤 Creating billing:', JSON.stringify(payload, null, 2));
 
-        // Ensure we save a transaction record locally
-        await supabase.from('transactions').insert({
+        const response = await abacatePay.post('/billing/create', payload);
+
+        console.log('📥 AbacatePay response:', JSON.stringify(response.data, null, 2));
+
+        // A resposta pode ter diferentes estruturas dependendo da versão da API
+        const billingData = response.data.data || response.data;
+        const billingId = billingData.id || billingData.billing?.id;
+        const billingUrl = billingData.url || billingData.billing?.url || billingData.payment_url;
+
+        if (!billingUrl) {
+            console.error('❌ No billing URL in response:', response.data);
+            return { error: 'Erro ao obter link de pagamento. Tente novamente.' };
+        }
+
+        // Salvar transação no banco
+        const { error: insertError } = await supabase.from('transactions').insert({
             user_id: userId,
             raffle_id: raffleId,
-            external_id: response.data.id || 'unknown',
+            external_id: billingId || 'unknown',
             amount: totalAmount,
             status: 'pending',
             ticket_numbers: tickets.map(t => t.ticket_number)
         });
 
+        if (insertError) {
+            console.error('❌ Error saving transaction:', insertError);
+        }
+
         return { url: billingUrl };
 
     } catch (e: any) {
-        console.error('Payment Error:', e.response?.data || e.message);
-        return { error: 'Erro ao gerar pagamento. Tente novamente mais tarde.' };
+        console.error('❌ Payment Error:', e.response?.data || e.message);
+
+        // Retornar mensagem de erro mais específica se disponível
+        const errorMessage = e.response?.data?.error?.message
+            || e.response?.data?.message
+            || 'Erro ao gerar pagamento. Tente novamente mais tarde.';
+
+        return { error: errorMessage };
     }
 }

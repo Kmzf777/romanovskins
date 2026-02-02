@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "WebFetch(domain:docs.abacatepay.com)",
+      "Bash(git add:*)"
+    ]
+  }
+}
