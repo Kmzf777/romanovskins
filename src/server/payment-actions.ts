@@ -42,8 +42,13 @@ export async function createCheckoutAction(raffleId: string) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://romanovdasrifas.vercel.app';
 
     try {
-        // Formatar telefone para padrão E.164 (remover caracteres especiais)
-        const formattedPhone = user.whatsapp.replace(/\D/g, '');
+        // Validar se o WhatsApp está cadastrado
+        if (!user.whatsapp) {
+            return { error: 'Número de WhatsApp não cadastrado. Por favor, atualize seu perfil.' };
+        }
+
+        // Extrair apenas os dígitos do telefone (formato esperado pela AbacatePay)
+        const phoneDigits = user.whatsapp.replace(/\D/g, '');
 
         const payload = {
             frequency: 'ONE_TIME',
@@ -60,9 +65,9 @@ export async function createCheckoutAction(raffleId: string) {
             completionUrl: `${appUrl}/rifa/${raffleId}?success=true`,
             customer: {
                 name: user.name,
-                cellPhone: formattedPhone,
-                email: `${formattedPhone}@romanov.com.br`,
-                taxId: '00000000000'
+                cellphone: phoneDigits,
+                email: `user${phoneDigits}@romanovrifas.com`,
+                taxId: '529.982.247-25'  // CPF válido para dev mode
             }
         };
 
