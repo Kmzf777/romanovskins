@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Source_Sans_3 } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
+import HeroAscii from '@/components/ui/hero-ascii';
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -28,6 +29,7 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${sourceSans.variable} antialiased`}
       >
+        <HeroAscii />
         <Header />
         {children}
       </body>

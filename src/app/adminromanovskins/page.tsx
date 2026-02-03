@@ -10,7 +10,7 @@ export default async function AdminPage() {
     // State 1: Not logged in -> Show Admin Login Form
     if (!adminSession) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+            <div className="flex min-h-screen items-center justify-center p-4 relative z-10">
                 <AdminLoginForm />
             </div>
         );
@@ -18,8 +18,8 @@ export default async function AdminPage() {
 
     // State 2: Admin Logged In - Show Dashboard
     return (
-        <div className="min-h-screen bg-gray-100">
-            <header className="bg-white shadow p-4 mb-6">
+        <div className="min-h-screen relative z-10 text-white">
+            <header className="bg-white/10 backdrop-blur-md shadow p-4 mb-6 border-b border-white/10">
                 <h1 className="text-xl font-bold">Painel Administrativo</h1>
             </header>
             <main className="container mx-auto p-4">
@@ -33,9 +33,9 @@ export default async function AdminPage() {
 
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                         {/* Placeholder for future stats */}
-                        <div className="bg-white p-6 rounded-lg shadow">
-                            <h3 className="text-lg font-medium text-gray-900">Total de Rifas</h3>
-                            <p className="text-3xl font-bold text-gray-600 mt-2">--</p>
+                        <div className="bg-white/5 p-6 rounded-lg shadow border border-white/10">
+                            <h3 className="text-lg font-medium text-gray-300">Total de Rifas</h3>
+                            <p className="text-3xl font-bold text-white mt-2">--</p>
                         </div>
                     </div>
                 </div>

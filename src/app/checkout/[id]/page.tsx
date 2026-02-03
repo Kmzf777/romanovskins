@@ -30,7 +30,7 @@ export default async function CheckoutPage({ params }: { params: Promise<{ id: s
     }
 
     return (
-        <div className="container mx-auto p-4 bg-gray-50 min-h-screen">
+        <div className="container mx-auto p-4 min-h-screen relative z-10">
             <CheckoutSummary raffle={raffle} tickets={tickets} />
         </div>
     );

@@ -1,6 +1,6 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
@@ -27,6 +27,60 @@ const MOCK_RAFFLES = [
         total_numbers: 50,
         status: 'active',
         created_at: new Date().toISOString()
+    }
+];
+
+const MOCK_PAST_RAFFLES = [
+    {
+        id: 'mock-past-1',
+        title: '[ENCERRADO] Karambit | Fade',
+        description: 'Sorteio realizado com sucesso!',
+        image_url: 'https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpovbSsLwJf2b1+CE81492zkL-HnvD8J_WAz2lV7cAh3r2V8Nzz3QHt_hA4Ym2hLdKQIQM6ZwvS-ADqwua7g5S8v57MzXoyvyFw4WGdwUKYzhVpTg/360fx360f',
+        price_per_ticket: 5.00,
+        total_numbers: 200,
+        status: 'drawn',
+        winner_id: 'user-1',
+        winner_ticket: 42,
+        draw_date: new Date(Date.now() - 86400000).toISOString() // 1 day ago
+    },
+    {
+        id: 'mock-past-2',
+        title: '[ENCERRADO] M4A4 | Howl',
+        description: 'O ganhador já recebeu o prêmio.',
+        image_url: 'https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpou-6kejhz2v_Nfz5H_uO1gb-Gw_alIITfn3p-58xOh-zF_Jn4xlQxrUZqYGv2LI_Bd1RvYgnT_Fm6x-i818W8uJ_Pynp9-n10V_ixwEQ/360fx360f',
+        price_per_ticket: 10.00,
+        total_numbers: 1000,
+        status: 'drawn',
+        winner_id: 'user-2',
+        winner_ticket: 777,
+        draw_date: new Date(Date.now() - 172800000).toISOString() // 2 days ago
+    }
+];
+
+const MOCK_WINNERS = [
+    {
+        id: 'win-1',
+        name: 'Rafael Silva',
+        raffle_title: 'Karambit | Fade',
+        raffle_image: 'https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpovbSsLwJf2b1+CE81492zkL-HnvD8J_WAz2lV7cAh3r2V8Nzz3QHt_hA4Ym2hLdKQIQM6ZwvS-ADqwua7g5S8v57MzXoyvyFw4WGdwUKYzhVpTg/360fx360f',
+        ticket_number: 42,
+        draw_date: '02/02/2026'
+    },
+    {
+        id: 'win-2',
+        name: 'João Souza',
+        raffle_title: 'M4A4 | Howl',
+        raffle_image: 'https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpou-6kejhz2v_Nfz5H_uO1gb-Gw_alIITfn3p-58xOh-zF_Jn4xlQxrUZqYGv2LI_Bd1RvYgnT_Fm6x-i818W8uJ_Pynp9-n10V_ixwEQ/360fx360f',
+        ticket_number: 777,
+        draw_date: '01/02/2026'
+    },
+    {
+        id: 'win-3',
+        name: 'Maria Oliveira',
+        raffle_title: 'Dragon Lore',
+        raffle_image: 'https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot621FAR17PLfYQJD_9W7m5a0mvLwOq7c2D1SvcN3ib6V89zz3gHt-xVuMD-mI4PBcAE9MlqC-lfqlO_o0JW0s87Lz3Jk6Sdz-z-DyPjCd1k/360fx360f',
+        ticket_number: 123,
+        draw_date: '30/01/2026'
     }
 ];
 
@@ -178,7 +232,7 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
         return { success: true };
     }
 
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const cookieStore = await cookies();
     const userId = cookieStore.get('romanov_user')?.value;
 
@@ -203,8 +257,9 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
         .select();
 
     if (error) {
-        console.error('Reservation error:', error);
-        return { success: false, error: 'Erro ao tentar reservar cotas.' };
+        console.error('Reservation error:', JSON.stringify(error, null, 2));
+        console.error('Reservation details:', { raffleId, numbers, userId });
+        return { success: false, error: `Erro ao tentar reservar cotas: ${error.message || 'Erro desconhecido'}` };
     }
 
     if (data.length !== numbers.length) {
@@ -228,4 +283,33 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
 
     revalidatePath(`/rifa/${raffleId}`);
     return { success: true };
+}
+
+export async function getPastRaffles() {
+    if (!checkEnv()) return MOCK_PAST_RAFFLES;
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+        .from('raffles')
+        .select('*')
+        .in('status', ['closed', 'cancelled']) // Adjust status based on actual DB enum
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching past raffles:', error);
+        return [];
+    }
+    return data;
+}
+
+export async function getRecentWinners() {
+    // For now, we'll just return mock data because "Winners" usually implies joining tables 
+    // (users, tickets, raffles) which might be complex if the DB isn't populated with real data yet.
+    if (!checkEnv()) return MOCK_WINNERS;
+
+    // TODO: Implement real DB query for winners
+    // This would likely involve fetching raffles that are drawn, 
+    // then getting the winning ticket, and the user associated with it.
+
+    return MOCK_WINNERS;
 }

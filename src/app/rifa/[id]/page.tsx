@@ -18,7 +18,7 @@ export default async function RafflePage({ params }: { params: Promise<{ id: str
     const userId = cookieStore.get('romanov_user')?.value;
 
     return (
-        <div className="container mx-auto p-4 max-w-4xl">
+        <div className="container mx-auto p-4 max-w-4xl relative z-10">
             <RaffleDetailClient raffle={raffle} tickets={tickets} userId={userId} />
         </div>
     );

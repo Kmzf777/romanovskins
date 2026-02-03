@@ -4,7 +4,8 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "WebFetch(domain:docs.abacatepay.com)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(node:*)"
     ]
   }
 }

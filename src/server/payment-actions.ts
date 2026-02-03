@@ -3,6 +3,7 @@
 import { abacatePay } from '@/lib/abacatepay';
 import { createClient } from '@/lib/supabase/server';
 import { cookies } from 'next/headers';
+import crypto from 'crypto';
 
 export async function createCheckoutAction(raffleId: string) {
     const supabase = await createClient();
@@ -61,8 +62,8 @@ export async function createCheckoutAction(raffleId: string) {
                     price: Math.round(raffle.price_per_ticket * 100), // Valor em centavos
                 }
             ],
-            returnUrl: `${appUrl}/rifa/${raffleId}`,
-            completionUrl: `${appUrl}/rifa/${raffleId}?success=true`,
+            returnUrl: `${appUrl}/checkout/success`,
+            completionUrl: `${appUrl}/checkout/success`,
             customer: {
                 name: user.name,
                 cellphone: phoneDigits,
@@ -88,18 +89,36 @@ export async function createCheckoutAction(raffleId: string) {
         }
 
         // Salvar transação no banco
-        const { error: insertError } = await supabase.from('transactions').insert({
+        const { data: transaction, error: insertError } = await supabase.from('transactions').insert({
             user_id: userId,
             raffle_id: raffleId,
             external_id: billingId || 'unknown',
             amount: totalAmount,
             status: 'pending',
             ticket_numbers: tickets.map(t => t.ticket_number)
-        });
+        }).select().single();
 
         if (insertError) {
             console.error('❌ Error saving transaction:', insertError);
+            return { error: 'Erro ao salvar transação.' };
         }
+
+        // Se tivermos a URL de pagamento, mas não conseguimos atualizar a URL de retorno na criação (limitação da API), 
+        // o ideal seria que a API aceitasse, mas aqui vamos assumir que o fluxo vai depender do ID estar na sessão ou pegarmos o último.
+        // POREM, a melhor prática é tentar incluir na URL se a API permitir update ou se criarmos com ela.
+        // Como já criamos o payload antes do ID... vamos fazer diferente:
+        // O ID do billing já foi criado. 
+
+        // CORREÇÃO: O payload é enviado ANTES. Precisamos atualizar a URL ou assumir que o parametro será passado de outra forma. 
+        // Mas espere, o payload é enviado no POST. Posso gerar um ID UUID antes? 
+        // Supabase gera ID.
+        // Vamos tentar pegar o ID do insert e atualizar a transaction se possível, mas o link já foi gerado no 'billing/create'.
+        // AbacatePay permite atualizar? Talvez não.
+
+        // Alternativa: O user vai para o billingUrl. Quando ele volta, ele volta para cadastrado no payload `returnUrl`.
+        // A `returnUrl` no payload estava constante. 
+        // Precisamos gerar o ID da transação *antes* ou aceitar que a success page busque a "última transação do usuário".
+        // Buscar a última transação do usuário é mais fácil e seguro dado o fluxo atual.
 
         return { url: billingUrl };
 

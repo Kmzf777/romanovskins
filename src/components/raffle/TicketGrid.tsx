@@ -33,14 +33,14 @@ export function TicketGrid({ tickets, raffleId, userId }: TicketGridProps) {
                 //    - Selected -> Green
                 //    - Default -> Slate
 
-                let bgClass = 'bg-slate-200 hover:bg-slate-300 cursor-pointer'; // Default
+                let bgClass = 'bg-white/5 hover:bg-white/10 text-white cursor-pointer'; // Default
                 let disabled = false;
 
                 if (isMyReservation) {
-                    bgClass = 'bg-yellow-400 cursor-default';
+                    bgClass = 'bg-yellow-400 text-black cursor-default';
                     disabled = true;
                 } else if (isReservedOrSold) {
-                    bgClass = 'bg-red-500 opacity-50 cursor-not-allowed';
+                    bgClass = 'bg-red-500 text-white opacity-50 cursor-not-allowed';
                     disabled = true;
                 } else if (isSelected) {
                     bgClass = 'bg-green-500 text-white hover:bg-green-600';
