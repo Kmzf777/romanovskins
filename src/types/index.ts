@@ -1,4 +1,4 @@
-export type RaffleStatus = 'active' | 'closed' | 'cancelled';
+export type RaffleStatus = 'active' | 'closed' | 'drawn' | 'cancelled';
 export type TicketStatus = 'available' | 'reserved' | 'sold';
 
 export interface User {
@@ -17,7 +17,15 @@ export interface Raffle {
     total_numbers: number;
     status: RaffleStatus;
     winner_number: number | null;
+    winner_ticket_number: number | null;
+    winner_user_id: string | null;
+    drawn_at: string | null;
+    float_value: string | null;
+    wear_condition: string | null;
     created_at: string;
+    // Computed by getRaffles()
+    available_count?: number;
+    sold_count?: number;
 }
 
 export interface Ticket {
@@ -39,4 +47,21 @@ export interface Transaction {
     status: 'pending' | 'paid' | 'failed';
     ticket_numbers: number[];
     created_at: string;
+}
+
+export interface AdminStats {
+    totalRaffles: number;
+    activeRaffles: number;
+    soldTickets: number;
+    totalRevenue: number;
+    totalUsers: number;
+}
+
+export interface Winner {
+    id: string;
+    name: string;
+    raffle_title: string;
+    raffle_image: string;
+    ticket_number: number;
+    draw_date: string;
 }
