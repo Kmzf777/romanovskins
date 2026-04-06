@@ -60,9 +60,17 @@ export default function HeaderContent({ user }: HeaderContentProps) {
             {/* Desktop Right Section (Actions) */}
             <div className="hidden md:flex items-center gap-3 md:gap-4">
                 {user ? (
-                    <div className="flex items-center gap-2 text-white">
-                        <span className="text-sm font-medium opacity-70">Olá,</span>
-                        <span className="font-bold">{user.whatsapp}</span>
+                    <div className="flex items-center gap-4">
+                        <Link
+                            href="/meus-tickets"
+                            className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                        >
+                            Meus Tickets
+                        </Link>
+                        <div className="flex items-center gap-2 text-white">
+                            <span className="text-sm font-medium opacity-70">Olá,</span>
+                            <span className="font-bold">{user.whatsapp}</span>
+                        </div>
                     </div>
                 ) : (
                     <>
@@ -91,10 +99,18 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                     style={{ backgroundColor: '#101011', borderTop: '1px solid #2A2A2E' }}
                 >
                     {user ? (
-                        <div className="flex flex-col items-center gap-2 text-white">
-                            <span className="text-sm font-medium opacity-70">Logado como</span>
-                            <span className="font-bold text-lg">{user.whatsapp}</span>
-                            {/* Maybe add Logout here later if requested */}
+                        <div className="flex flex-col items-center gap-4 text-white">
+                            <div className="flex flex-col items-center gap-1">
+                                <span className="text-sm font-medium opacity-70">Logado como</span>
+                                <span className="font-bold text-lg">{user.whatsapp}</span>
+                            </div>
+                            <Link
+                                href="/meus-tickets"
+                                className="text-base font-medium text-zinc-300 hover:text-white"
+                                onClick={() => setIsMenuOpen(false)}
+                            >
+                                Meus Tickets
+                            </Link>
                         </div>
                     ) : (
                         <div className="flex flex-col gap-4 w-full px-8">
