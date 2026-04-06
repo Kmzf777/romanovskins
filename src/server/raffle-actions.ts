@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
+import { getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
 
 // MOCK DATA
 const MOCK_RAFFLES = [
@@ -442,4 +443,94 @@ export async function getRecentWinners() {
             ? new Date(r.drawn_at).toLocaleDateString('pt-BR')
             : '',
     }));
+}
+
+export async function performDrawAction(raffleId: string, manualPrimeiroPremio?: string) {
+    const cookieStore = await cookies();
+    const adminSession = cookieStore.get('admin_session')?.value;
+
+    if (!adminSession) {
+        return { success: false, error: 'Não autorizado.' };
+    }
+
+    const supabase = createAdminClient();
+
+    // Verificar que a rifa está fechada
+    const { data: raffle } = await supabase
+        .from('raffles')
+        .select('*')
+        .eq('id', raffleId)
+        .single();
+
+    if (!raffle) return { success: false, error: 'Rifa não encontrada.' };
+    if (raffle.status !== 'closed') return { success: false, error: 'A rifa precisa estar fechada para sortear.' };
+
+    // Buscar todos os tickets vendidos
+    const { data: soldTickets } = await supabase
+        .from('tickets')
+        .select('ticket_number, user_id')
+        .eq('raffle_id', raffleId)
+        .eq('status', 'sold');
+
+    if (!soldTickets || soldTickets.length === 0) {
+        return { success: false, error: 'Nenhuma cota vendida nesta rifa.' };
+    }
+
+    // Obter resultado da Loteria Federal (ou usar o manual)
+    let lotoResult: { concurso: number; dataApuracao: string; primeiroPremio: string };
+    if (manualPrimeiroPremio) {
+        lotoResult = { concurso: 0, dataApuracao: '', primeiroPremio: manualPrimeiroPremio };
+    } else {
+        lotoResult = await getLatestLotoFederal();
+    }
+
+    let winnerTicketNumber = calcularNumeroVencedor(lotoResult.primeiroPremio, raffle.total_numbers);
+
+    // Buscar o dono do ticket vencedor
+    let winnerTicket = soldTickets.find(t => t.ticket_number === winnerTicketNumber);
+
+    // Fallback: ticket não vendido → ticket vendido com número mais próximo
+    if (!winnerTicket) {
+        winnerTicket = soldTickets.reduce((closest, t) => {
+            const diffT = Math.abs(t.ticket_number - winnerTicketNumber);
+            const diffC = Math.abs(closest.ticket_number - winnerTicketNumber);
+            return diffT < diffC ? t : closest;
+        });
+        winnerTicketNumber = winnerTicket.ticket_number;
+    }
+
+    // Atualizar a rifa com o resultado
+    const { error: updateError } = await supabase
+        .from('raffles')
+        .update({
+            status: 'drawn',
+            drawn_at: new Date().toISOString(),
+            winner_ticket_number: winnerTicketNumber,
+            winner_user_id: winnerTicket.user_id,
+        })
+        .eq('id', raffleId);
+
+    if (updateError) {
+        console.error('Error performing draw:', updateError);
+        return { success: false, error: 'Erro ao registrar sorteio.' };
+    }
+
+    revalidatePath('/adminromanovskins');
+    revalidatePath('/');
+
+    // Buscar nome do ganhador para exibir no modal
+    const { data: winner } = await supabase
+        .from('users')
+        .select('name, whatsapp')
+        .eq('id', winnerTicket.user_id)
+        .single();
+
+    return {
+        success: true,
+        winnerTicketNumber,
+        winnerName: winner?.name ?? 'Desconhecido',
+        winnerWhatsapp: winner?.whatsapp ?? '',
+        concurso: lotoResult.concurso,
+        primeiroPremio: lotoResult.primeiroPremio,
+    };
 }
