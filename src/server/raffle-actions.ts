@@ -171,17 +171,35 @@ export async function getRaffles() {
     if (!checkEnv()) return MOCK_RAFFLES;
 
     const supabase = await createClient();
-    const { data, error } = await supabase
+    const { data: raffles, error } = await supabase
         .from('raffles')
         .select('*')
         .eq('status', 'active')
         .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Error fetching raffles:', error);
+    if (error || !raffles || raffles.length === 0) {
+        if (error) console.error('Error fetching raffles:', error);
         return [];
     }
-    return data;
+
+    // Buscar contagens reais de tickets por rifa
+    const { data: counts } = await supabase.rpc('get_raffle_ticket_counts', {
+        raffle_ids: raffles.map(r => r.id)
+    });
+
+    const countMap: Record<string, { available_count: number; sold_count: number }> = {};
+    (counts || []).forEach((c: any) => {
+        countMap[c.raffle_id] = {
+            available_count: Number(c.available_count),
+            sold_count: Number(c.sold_count)
+        };
+    });
+
+    return raffles.map(r => ({
+        ...r,
+        available_count: countMap[r.id]?.available_count ?? r.total_numbers,
+        sold_count: countMap[r.id]?.sold_count ?? 0,
+    }));
 }
 
 export async function getRaffleDetails(id: string) {
@@ -291,25 +309,50 @@ export async function getPastRaffles() {
     const supabase = await createClient();
     const { data, error } = await supabase
         .from('raffles')
-        .select('*')
-        .in('status', ['closed', 'cancelled']) // Adjust status based on actual DB enum
+        .select('*, winner_user:users!winner_user_id ( name )')
+        .in('status', ['closed', 'drawn'])
         .order('created_at', { ascending: false });
 
     if (error) {
         console.error('Error fetching past raffles:', error);
         return [];
     }
-    return data;
+    return data || [];
 }
 
 export async function getRecentWinners() {
-    // For now, we'll just return mock data because "Winners" usually implies joining tables 
-    // (users, tickets, raffles) which might be complex if the DB isn't populated with real data yet.
     if (!checkEnv()) return MOCK_WINNERS;
 
-    // TODO: Implement real DB query for winners
-    // This would likely involve fetching raffles that are drawn, 
-    // then getting the winning ticket, and the user associated with it.
+    const supabase = await createClient();
 
-    return MOCK_WINNERS;
+    const { data, error } = await supabase
+        .from('raffles')
+        .select(`
+            id,
+            title,
+            image_url,
+            winner_ticket_number,
+            drawn_at,
+            winner_user:users!winner_user_id ( name )
+        `)
+        .eq('status', 'drawn')
+        .not('winner_user_id', 'is', null)
+        .order('drawn_at', { ascending: false })
+        .limit(5);
+
+    if (error) {
+        console.error('Error fetching winners:', error);
+        return [];
+    }
+
+    return (data || []).map((r: any) => ({
+        id: r.id,
+        name: r.winner_user?.name ?? 'Desconhecido',
+        raffle_title: r.title,
+        raffle_image: r.image_url,
+        ticket_number: r.winner_ticket_number,
+        draw_date: r.drawn_at
+            ? new Date(r.drawn_at).toLocaleDateString('pt-BR')
+            : '',
+    }));
 }

@@ -3,30 +3,39 @@
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { ArrowRight, Ticket } from 'lucide-react';
+import { Ticket } from 'lucide-react';
 
 interface TicketCardProps {
     raffle: {
         id: string;
         title: string;
-        description: string;
+        description: string | null;
         image_url: string;
         price_per_ticket: number;
         total_numbers: number;
         status: string;
+        float_value?: string | null;
+        wear_condition?: string | null;
+        available_count?: number;
+        sold_count?: number;
     };
 }
 
 export function TicketCard({ raffle }: TicketCardProps) {
-    // Mock data for display purposes
-    const floatValue = '0.01231234135';
-    const condition = 'Field-Tested';
-    const remaining = Math.floor(raffle.total_numbers * 0.4); // Mock remaining
+    const available = raffle.available_count ?? raffle.total_numbers;
+    const sold = raffle.sold_count ?? 0;
+    const soldPercent = raffle.total_numbers > 0
+        ? Math.round((sold / raffle.total_numbers) * 100)
+        : 0;
+
+    const progressColor =
+        soldPercent >= 80 ? 'bg-red-500' :
+        soldPercent >= 50 ? 'bg-yellow-500' :
+        'bg-green-500';
 
     return (
         <Card className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-primary/50 transition-all duration-300">
             <div className="flex flex-col md:flex-row">
-                {/* Left Side - Image Area */}
                 {/* Left Side - Image Area */}
                 <div className="relative w-full md:w-80 aspect-square md:aspect-auto shrink-0 md:p-4 p-0">
                     <div className="w-full h-full relative overflow-hidden rounded-xl">
@@ -35,25 +44,24 @@ export function TicketCard({ raffle }: TicketCardProps) {
                             alt={raffle.title}
                             className="w-full h-full object-cover transition-transform duration-500"
                         />
-
-                        {/* Overlay Info */}
                         <div className="absolute top-0 left-0 p-2 w-full flex justify-between items-start text-[10px] sm:text-xs font-mono tracking-wider">
-                            <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-zinc-400 border border-zinc-800">
-                                {floatValue}
-                            </span>
-                            <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-yellow-500 border border-zinc-800 uppercase">
-                                {condition}
-                            </span>
+                            {raffle.float_value && (
+                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-zinc-400 border border-zinc-800">
+                                    {raffle.float_value}
+                                </span>
+                            )}
+                            {raffle.wear_condition && (
+                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-yellow-500 border border-zinc-800 uppercase ml-auto">
+                                    {raffle.wear_condition}
+                                </span>
+                            )}
                         </div>
-
-                        {/* Gradient Overlay */}
                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-zinc-900/50" />
                     </div>
                 </div>
 
                 {/* Right Side - Content */}
                 <div className="flex-1 p-6 flex flex-col justify-between relative">
-                    {/* Decorative Perforation Line (Mobile: Horizontal, Desktop: Vertical) */}
                     <div
                         className="hidden md:block absolute left-0 top-6 bottom-6 w-[2px]"
                         style={{
@@ -96,7 +104,21 @@ export function TicketCard({ raffle }: TicketCardProps) {
                             </div>
                             <div>
                                 <p className="text-xs text-zinc-500 uppercase tracking-wider">Cotas Restantes</p>
-                                <p className="text-lg font-semibold text-zinc-300">{remaining}</p>
+                                <p className="text-lg font-semibold text-zinc-300">{available}</p>
+                            </div>
+                        </div>
+
+                        {/* Progress Bar */}
+                        <div>
+                            <div className="flex justify-between text-xs text-zinc-500 mb-1">
+                                <span>{sold} vendidas</span>
+                                <span>{soldPercent}%</span>
+                            </div>
+                            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                                <div
+                                    className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
+                                    style={{ width: `${soldPercent}%` }}
+                                />
                             </div>
                         </div>
                     </div>
