@@ -3,15 +3,17 @@
 import { createCheckoutAction } from '@/server/payment-actions';
 import { Button } from '@/components/ui/button';
 import { useTransition } from 'react';
+import { toast } from 'sonner';
+import { CountdownTimer } from './CountdownTimer';
 
-export function CheckoutSummary({ raffle, tickets }: any) {
+export function CheckoutSummary({ raffle, tickets, expiresAt }: any) {
     const [isPending, startTransition] = useTransition();
 
     const handlePayment = () => {
         startTransition(async () => {
             const res = await createCheckoutAction(raffle.id);
             if (res.error) {
-                alert(res.error);
+                toast.error(res.error);
             } else if (res.url) {
                 window.location.href = res.url;
             }
@@ -21,9 +23,11 @@ export function CheckoutSummary({ raffle, tickets }: any) {
     const total = tickets.length * raffle.price_per_ticket;
 
     return (
-
         <div className="max-w-md mx-auto mt-10">
             <h1 className="text-2xl font-bold mb-4 text-white">Resumo do Pedido</h1>
+
+            <CountdownTimer expiresAt={expiresAt} raffleId={raffle.id} />
+
             <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6 shadow-sm text-white">
                 <div className="border-b border-zinc-800 pb-4 mb-4">
                     <h2 className="font-semibold text-lg">{raffle.title}</h2>
@@ -46,11 +50,14 @@ export function CheckoutSummary({ raffle, tickets }: any) {
                     <span className="text-green-500">R$ {total.toFixed(2)}</span>
                 </div>
 
-                <Button onClick={handlePayment} disabled={isPending} className="w-full h-12 text-lg font-bold uppercase tracking-wide">
+                <Button
+                    onClick={handlePayment}
+                    disabled={isPending}
+                    className="w-full h-12 text-lg font-bold uppercase tracking-wide"
+                >
                     {isPending ? 'Gerando PIX...' : 'Pagar Agora (PIX)'}
                 </Button>
             </div>
         </div>
     );
-
 }
