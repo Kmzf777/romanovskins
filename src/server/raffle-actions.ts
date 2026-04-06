@@ -94,6 +94,8 @@ const createRaffleSchema = z.object({
     image_url: z.string().url('URL da imagem inválida'),
     price_per_ticket: z.number().min(0.01, 'Preço deve ser maior que 0'),
     total_numbers: z.number().int().min(1).max(100000, 'Máximo de 100.000 cotas'),
+    float_value: z.string().optional(),
+    wear_condition: z.string().optional(),
 });
 
 export async function createRaffleAction(prevState: any, formData: FormData) {
@@ -108,6 +110,8 @@ export async function createRaffleAction(prevState: any, formData: FormData) {
     const image_url = formData.get('image_url') as string;
     const price_per_ticket = parseFloat(formData.get('price_per_ticket') as string);
     const total_numbers = parseInt(formData.get('total_numbers') as string);
+    const float_value = (formData.get('float_value') as string) || null;
+    const wear_condition = (formData.get('wear_condition') as string) || null;
 
     const validation = createRaffleSchema.safeParse({
         title, description, image_url, price_per_ticket, total_numbers
@@ -126,7 +130,9 @@ export async function createRaffleAction(prevState: any, formData: FormData) {
             image_url,
             price_per_ticket,
             total_numbers,
-            status: 'active'
+            status: 'active',
+            float_value: float_value || null,
+            wear_condition: wear_condition || null,
         })
         .select()
         .single();
