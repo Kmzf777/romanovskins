@@ -5,11 +5,22 @@ import { Button } from '@/components/ui/button';
 import { reserveTicketsAction } from '@/server/raffle-actions';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
 
 export function RaffleDetailClient({ raffle, tickets, userId }: any) {
     const { selectedNumbers, clearCart } = useCartStore();
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
+
+    // Calcular progresso
+    const sold = tickets.filter((t: any) => t.status !== 'available').length;
+    const soldPercent = raffle.total_numbers > 0
+        ? Math.round((sold / raffle.total_numbers) * 100)
+        : 0;
+    const progressColor =
+        soldPercent >= 80 ? 'bg-red-500' :
+        soldPercent >= 50 ? 'bg-yellow-500' :
+        'bg-green-500';
 
     const handleReserve = () => {
         if (!userId) {
@@ -22,7 +33,7 @@ export function RaffleDetailClient({ raffle, tickets, userId }: any) {
                 clearCart();
                 router.push(`/checkout/${raffle.id}`);
             } else {
-                alert(result.error);
+                toast.error(result.error || 'Erro ao reservar cotas.');
                 router.refresh();
             }
         });
@@ -39,6 +50,20 @@ export function RaffleDetailClient({ raffle, tickets, userId }: any) {
                 <div className="mt-4 flex items-center gap-4">
                     <span className="text-2xl font-bold text-green-500">R$ {raffle.price_per_ticket.toFixed(2)}</span>
                     <span className="text-sm text-zinc-500">por cota</span>
+                </div>
+
+                {/* Progress Bar */}
+                <div className="mt-4">
+                    <div className="flex justify-between text-xs text-zinc-500 mb-1">
+                        <span>{sold} de {raffle.total_numbers} cotas vendidas</span>
+                        <span>{soldPercent}%</span>
+                    </div>
+                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                            className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
+                            style={{ width: `${soldPercent}%` }}
+                        />
+                    </div>
                 </div>
             </div>
 
