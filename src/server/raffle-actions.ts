@@ -326,6 +326,87 @@ export async function getPastRaffles() {
     return data || [];
 }
 
+export async function getAdminStats() {
+    if (!checkEnv()) return {
+        totalRaffles: 2, activeRaffles: 2, soldTickets: 47, totalRevenue: 94.00, totalUsers: 5
+    };
+
+    const supabase = createAdminClient();
+
+    const [rafflesRes, soldRes, revenueRes, usersRes] = await Promise.all([
+        supabase.from('raffles').select('id, status'),
+        supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
+        supabase.from('transactions').select('amount').eq('status', 'paid'),
+        supabase.from('users').select('id', { count: 'exact', head: true }),
+    ]);
+
+    const totalRevenue = (revenueRes.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
+    const activeRaffles = (rafflesRes.data || []).filter(r => r.status === 'active').length;
+
+    return {
+        totalRaffles: rafflesRes.data?.length ?? 0,
+        activeRaffles,
+        soldTickets: soldRes.count ?? 0,
+        totalRevenue,
+        totalUsers: usersRes.count ?? 0,
+    };
+}
+
+export async function getAllRafflesAdmin() {
+    if (!checkEnv()) return [...MOCK_RAFFLES, ...MOCK_PAST_RAFFLES];
+
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+        .from('raffles')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        console.error('Error fetching admin raffles:', error);
+        return [];
+    }
+
+    if (!data || data.length === 0) return [];
+
+    const { data: counts } = await supabase.rpc('get_raffle_ticket_counts', {
+        raffle_ids: data.map(r => r.id)
+    });
+
+    const countMap: Record<string, { available_count: number; sold_count: number }> = {};
+    (counts || []).forEach((c: any) => {
+        countMap[c.raffle_id] = {
+            available_count: Number(c.available_count),
+            sold_count: Number(c.sold_count),
+        };
+    });
+
+    return data.map(r => ({
+        ...r,
+        available_count: countMap[r.id]?.available_count ?? r.total_numbers,
+        sold_count: countMap[r.id]?.sold_count ?? 0,
+    }));
+}
+
+export async function closeRaffleAction(raffleId: string) {
+    if (!checkEnv()) return { success: true };
+
+    const supabase = createAdminClient();
+    const { error } = await supabase
+        .from('raffles')
+        .update({ status: 'closed' })
+        .eq('id', raffleId)
+        .eq('status', 'active');
+
+    if (error) {
+        console.error('Error closing raffle:', error);
+        return { success: false, error: 'Erro ao fechar rifa.' };
+    }
+
+    revalidatePath('/adminromanovskins');
+    revalidatePath('/');
+    return { success: true };
+}
+
 export async function getRecentWinners() {
     if (!checkEnv()) return MOCK_WINNERS;
 
