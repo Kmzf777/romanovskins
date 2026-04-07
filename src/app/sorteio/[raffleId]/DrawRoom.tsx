@@ -17,6 +17,7 @@ interface DrawSession {
   winner_name: string | null;
   concurso: number | null;
   primeiro_premio: string | null;
+  target_concurso: number | null;
 }
 
 interface Raffle {
@@ -135,6 +136,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
           onDrawComplete={() => setPhase('drawn')}
           drawError={drawError}
           winnerNumber={session.winner_ticket_number}
+          targetConcurso={session.target_concurso ?? undefined}
         />
       </Overlay>
     );
