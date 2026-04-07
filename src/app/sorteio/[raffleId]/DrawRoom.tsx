@@ -129,9 +129,26 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
   // Wrapper único: overlay fixed cobre Header, Footer e background do layout raiz
   function Overlay({ children }: { children: React.ReactNode }) {
     return (
-      <div className="fixed inset-0 z-[100] bg-zinc-950 overflow-y-auto">
-        {children}
-      </div>
+      <>
+        <style>{`
+          .dl-overlay {
+            background-color: #090704;
+            background-image: url('/dlore9-16.png');
+            background-size: cover;
+            background-position: center top;
+            background-repeat: no-repeat;
+          }
+          @media (min-width: 640px) {
+            .dl-overlay {
+              background-image: url('/dlore16-9.png');
+              background-position: center center;
+            }
+          }
+        `}</style>
+        <div className="dl-overlay fixed inset-0 z-[100] overflow-y-auto">
+          {children}
+        </div>
+      </>
     );
   }
 

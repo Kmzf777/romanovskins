@@ -93,24 +93,10 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
           100% { transform: translate(0, 0); }
         }
 
-        /* Responsive background image — fixed to viewport */
-        .dlp-bg-img {
-          background-image: url('/dlore9-16.png');
-          background-size: cover;
-          background-position: center top;
-          background-repeat: no-repeat;
-          background-attachment: fixed;
-        }
-        @media (min-width: 640px) {
-          .dlp-bg-img {
-            background-image: url('/dlore16-9.png');
-            background-position: center center;
-          }
-        }
       `}</style>
 
-      <div className="dl-proof-root dlp-bg-img min-h-screen text-white flex flex-col relative overflow-hidden"
-           style={{ backgroundColor: '#090704' }}>
+      <div className="dl-proof-root min-h-screen text-white flex flex-col relative overflow-hidden"
+           style={{ backgroundColor: 'transparent' }}>
 
         {/* Background dark overlay */}
         <div className="absolute inset-0 pointer-events-none" style={{
