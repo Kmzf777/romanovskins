@@ -21,6 +21,7 @@ interface Raffle {
 interface ProofPhaseProps {
   raffle: Raffle;
   session: DrawSession;
+  onBack?: () => void;
 }
 
 function maskName(name: string): string {
@@ -33,7 +34,7 @@ function maskName(name: string): string {
     .join(' ');
 }
 
-export function ProofPhase({ raffle, session }: ProofPhaseProps) {
+export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
   const {
     winner_ticket_number,
     winner_name,
@@ -164,6 +165,15 @@ export function ProofPhase({ raffle, session }: ProofPhaseProps) {
             <Copy className="w-4 h-4" />
           </button>
         </div>
+
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors underline underline-offset-4"
+          >
+            ← Voltar à roleta
+          </button>
+        )}
 
         {/* Imagem da rifa */}
         <div className="flex items-center gap-3 text-sm text-zinc-500">

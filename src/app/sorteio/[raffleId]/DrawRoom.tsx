@@ -41,6 +41,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     return 'countdown'; // 'waiting' e 'drawing' ficam no countdown (roleta integrada)
   });
   const [drawError, setDrawError] = useState<string | null>(null);
+  const [rouletteKey, setRouletteKey] = useState(0);
   const drawTriggered = useRef(false);
 
   // DEBUG: força sorteio imediato ignorando draw_at (remover antes de produção)
@@ -151,6 +152,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     return (
       <Overlay>
         <CountdownPhase
+          key={rouletteKey}
           raffle={raffle}
           drawAt={session.draw_at}
           onCountdownEnd={triggerDraw}
@@ -167,7 +169,16 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
   if (phase === 'drawn' && session?.winner_ticket_number !== null) {
     return (
       <Overlay>
-        <ProofPhase raffle={raffle} session={session!} />
+        <ProofPhase
+          raffle={raffle}
+          session={session!}
+          onBack={() => {
+            setPhase('countdown');
+            setDrawError(null);
+            drawTriggered.current = false;
+            setRouletteKey(k => k + 1); // remonta CountdownPhase com estado zerado
+          }}
+        />
       </Overlay>
     );
   }
