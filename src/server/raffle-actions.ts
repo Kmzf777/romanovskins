@@ -17,6 +17,10 @@ const MOCK_RAFFLES = [
         price_per_ticket: 0.50,
         total_numbers: 100,
         status: 'active',
+        featured: true,
+        original_price: 1200.00,
+        float_value: '0.032',
+        wear_condition: 'FT',
         created_at: new Date().toISOString()
     },
     {
@@ -27,6 +31,10 @@ const MOCK_RAFFLES = [
         price_per_ticket: 2.00,
         total_numbers: 50,
         status: 'active',
+        featured: false,
+        original_price: null,
+        float_value: '0.198',
+        wear_condition: 'MW',
         created_at: new Date().toISOString()
     }
 ];
@@ -533,4 +541,62 @@ export async function performDrawAction(raffleId: string, manualPrimeiroPremio?:
         concurso: lotoResult.concurso,
         primeiroPremio: lotoResult.primeiroPremio,
     };
+}
+
+export async function getPublicStats() {
+    if (!checkEnv()) return { totalRaffles: 12, totalWinners: 8, totalValue: 48000 };
+
+    const supabase = await createClient();
+
+    const [rafflesRes, winnersRes, valueRes] = await Promise.all([
+        supabase.from('raffles').select('id', { count: 'exact', head: true }),
+        supabase.from('raffles').select('id', { count: 'exact', head: true }).eq('status', 'drawn'),
+        supabase.from('transactions').select('amount').eq('status', 'paid'),
+    ]);
+
+    const totalValue = (valueRes.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
+
+    return {
+        totalRaffles: rafflesRes.count ?? 0,
+        totalWinners: winnersRes.count ?? 0,
+        totalValue,
+    };
+}
+
+export async function getAllWinners(page = 1, perPage = 12) {
+    if (!checkEnv()) return { winners: MOCK_WINNERS, total: MOCK_WINNERS.length };
+
+    const supabase = await createClient();
+    const from = (page - 1) * perPage;
+    const to = from + perPage - 1;
+
+    const { data, error, count } = await supabase
+        .from('raffles')
+        .select(`
+            id,
+            title,
+            image_url,
+            winner_ticket_number,
+            drawn_at,
+            winner_user:users!winner_user_id ( name )
+        `, { count: 'exact' })
+        .eq('status', 'drawn')
+        .not('winner_user_id', 'is', null)
+        .order('drawn_at', { ascending: false })
+        .range(from, to);
+
+    if (error) return { winners: [], total: 0 };
+
+    const winners = (data || []).map((r: any) => ({
+        id: r.id,
+        name: r.winner_user?.name ?? 'Desconhecido',
+        raffle_title: r.title,
+        raffle_image: r.image_url,
+        ticket_number: r.winner_ticket_number,
+        draw_date: r.drawn_at
+            ? new Date(r.drawn_at).toLocaleDateString('pt-BR')
+            : '',
+    }));
+
+    return { winners, total: count ?? 0 };
 }

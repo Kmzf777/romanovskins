@@ -22,6 +22,8 @@ export interface Raffle {
     drawn_at: string | null;
     float_value: string | null;
     wear_condition: string | null;
+    featured: boolean;
+    original_price: number | null;
     created_at: string;
     // Computed by getRaffles()
     available_count?: number;
