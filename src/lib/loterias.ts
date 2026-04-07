@@ -24,6 +24,7 @@ export async function getLatestLotoFederal(): Promise<LotoFederalResult> {
                     primeiroPremio: String(primeiroPremio).trim(),
                 };
             }
+            throw new Error('Formato inesperado da API primária — sem campo de prêmio');
         }
     } catch {
         // Fallback para API direta da Caixa

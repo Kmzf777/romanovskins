@@ -139,6 +139,18 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     );
   }
 
+  // drawn mas winner_ticket_number ainda nulo (edge case de falha parcial)
+  if (phase === 'drawn') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
+        <div className="text-center space-y-3">
+          <p className="text-2xl font-bold text-zinc-400">Aguardando resultado...</p>
+          <p className="text-zinc-600 text-sm">Resultado será atualizado em breve.</p>
+        </div>
+      </div>
+    );
+  }
+
   // Estado 'drawing' enquanto aguarda o resultado chegar via Realtime
   return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
