@@ -18,17 +18,11 @@ export function CountdownTimer({ expiresAt, raffleId }: CountdownTimerProps) {
     useEffect(() => {
         setMounted(true);
         const target = new Date(expiresAt).getTime();
-
         const tick = () => {
             const remaining = target - Date.now();
-            if (remaining <= 0) {
-                setExpired(true);
-                setTimeLeft(0);
-                return;
-            }
+            if (remaining <= 0) { setExpired(true); setTimeLeft(0); return; }
             setTimeLeft(remaining);
         };
-
         tick();
         const interval = setInterval(tick, 1000);
         return () => clearInterval(interval);
@@ -36,22 +30,20 @@ export function CountdownTimer({ expiresAt, raffleId }: CountdownTimerProps) {
 
     useEffect(() => {
         if (!expired) return;
-        const timeout = setTimeout(() => {
-            router.push(`/rifa/${raffleId}`);
-        }, 3000);
+        const timeout = setTimeout(() => router.push(`/rifa/${raffleId}`), 3000);
         return () => clearTimeout(timeout);
     }, [expired, raffleId, router]);
 
-    // Evitar hydration mismatch
     if (!mounted) return null;
 
     if (expired) {
         return (
-            <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-3 flex items-center gap-2 mb-4">
-                <Clock className="w-4 h-4 text-red-400 shrink-0" />
-                <span className="text-red-400 text-sm font-medium">
-                    Reserva expirada. Redirecionando...
-                </span>
+            <div
+                className="flex items-center gap-3 px-4 py-3 rounded-xl mb-6 text-sm font-medium"
+                style={{ backgroundColor: 'rgba(230,57,70,0.1)', border: '1px solid rgba(230,57,70,0.3)', color: '#E63946' }}
+            >
+                <Clock size={16} />
+                Reserva expirada. Redirecionando...
             </div>
         );
     }
@@ -61,15 +53,20 @@ export function CountdownTimer({ expiresAt, raffleId }: CountdownTimerProps) {
     const isUrgent = timeLeft < 5 * 60 * 1000;
 
     return (
-        <div className={`border rounded-lg p-3 flex items-center gap-2 mb-4 ${
-            isUrgent
-                ? 'bg-red-500/10 border-red-500/30'
-                : 'bg-yellow-500/10 border-yellow-500/30'
-        }`}>
-            <Clock className={`w-4 h-4 shrink-0 ${isUrgent ? 'text-red-400' : 'text-yellow-400'}`} />
-            <span className={`text-sm font-medium ${isUrgent ? 'text-red-400' : 'text-yellow-400'}`}>
+        <div
+            className="flex items-center gap-3 px-4 py-3 rounded-xl mb-6"
+            style={{
+                backgroundColor: isUrgent ? 'rgba(230,57,70,0.1)' : 'rgba(245,197,24,0.08)',
+                border: `1px solid ${isUrgent ? 'rgba(230,57,70,0.3)' : 'rgba(245,197,24,0.25)'}`,
+            }}
+        >
+            <Clock size={16} style={{ color: isUrgent ? '#E63946' : '#F5C518', flexShrink: 0 }} />
+            <span className="text-sm" style={{ color: isUrgent ? '#E63946' : '#7A7A8A' }}>
                 Reserva expira em{' '}
-                <span className="font-mono font-bold text-lg">
+                <span
+                    className="font-black text-xl"
+                    style={{ fontFamily: 'var(--font-geist-mono)', color: isUrgent ? '#E63946' : '#F5C518' }}
+                >
                     {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
                 </span>
             </span>
