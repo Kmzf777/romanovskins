@@ -9,82 +9,79 @@ interface HeaderContentProps {
     user: any;
 }
 
+const navLinks = [
+    { href: '/#rifas', label: 'Rifas' },
+    { href: '/como-funciona', label: 'Como Funciona' },
+    { href: '/ganhadores', label: 'Ganhadores' },
+];
+
 export default function HeaderContent({ user }: HeaderContentProps) {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-    const toggleMenu = () => setIsMenuOpen(!isMenuOpen);
-
     return (
-        <header className="w-full h-20 px-8 flex items-center justify-between z-50 relative" style={{ backgroundColor: '#101011' }}>
-            {/* Mobile Hamburger Button */}
-            <button
-                onClick={toggleMenu}
-                className="md:hidden p-2 -ml-2 text-white hover:text-[#F5C518] transition-colors z-20"
-                aria-label="Menu"
-            >
-                {isMenuOpen ? <X size={28} /> : <Menu size={28} />}
-            </button>
-
-            {/* Logo Section */}
-            {/* Mobile: Absolute Center. Desktop: Relative Left */}
-            <Link
-                href="/"
-                className={`
-                    flex items-center gap-3 hover:opacity-90 transition-opacity
-                    absolute left-1/2 -translate-x-1/2 md:static md:translate-x-0 md:mr-auto
-                `}
-            >
-                <div className="relative w-16 h-16 shrink-0">
-                    <Image
-                        src="/logo-icon.png"
-                        alt="Romanov Rifas Logo"
-                        fill
-                        className="object-contain"
-                        priority
-                    />
+        <header
+            className="w-full h-[72px] px-6 md:px-10 flex items-center justify-between z-50 relative sticky top-0"
+            style={{
+                backgroundColor: 'rgba(10,10,11,0.92)',
+                backdropFilter: 'blur(12px)',
+                borderBottom: '1px solid #2A2A32',
+            }}
+        >
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-3 hover:opacity-90 transition-opacity shrink-0">
+                <div className="relative w-10 h-10 shrink-0">
+                    <Image src="/logo-icon.png" alt="Romanov Rifas Logo" fill className="object-contain" priority />
                 </div>
-                {/* User said "somente o logo" for mobile. Let's hide the text on mobile if that's the intent.
-                    "deixe somente o logo. centralizado" -> likely implies just the icon.
-                    But to be safe and consistent with brand, I'll keep the text hidden on mobile if space is tight,
-                    or show it if it fits. The prompt says "somente o logo". Literal interpretation: Only the graphic.
-                    Let's hide the text on small screens.
-                */}
                 <span
-                    className="hidden md:block text-xl md:text-2xl text-[#F5C518] uppercase tracking-wider"
-                    style={{ fontWeight: 900 }}
+                    className="text-[22px] tracking-wider hidden md:block"
+                    style={{ fontFamily: 'var(--font-bebas-neue)', color: '#F5C518' }}
                 >
                     ROMANOV RIFAS
                 </span>
             </Link>
 
-            {/* Desktop Right Section (Actions) */}
-            <div className="hidden md:flex items-center gap-3 md:gap-4">
+            {/* Desktop nav */}
+            <nav className="hidden md:flex items-center gap-8">
+                {navLinks.map(link => (
+                    <Link
+                        key={link.href}
+                        href={link.href}
+                        className="text-sm font-medium transition-colors hover:text-white"
+                        style={{ color: '#7A7A8A' }}
+                    >
+                        {link.label}
+                    </Link>
+                ))}
+            </nav>
+
+            {/* Desktop actions */}
+            <div className="hidden md:flex items-center gap-3">
                 {user ? (
-                    <div className="flex items-center gap-4">
+                    <>
                         <Link
                             href="/meus-tickets"
-                            className="text-sm font-medium text-zinc-300 hover:text-white transition-colors"
+                            className="text-sm font-medium px-4 py-2 rounded-lg transition-colors hover:text-white"
+                            style={{ color: '#7A7A8A', border: '1px solid #2A2A32' }}
                         >
                             Meus Tickets
                         </Link>
-                        <div className="flex items-center gap-2 text-white">
-                            <span className="text-sm font-medium opacity-70">Olá,</span>
-                            <span className="font-bold">{user.whatsapp}</span>
-                        </div>
-                    </div>
+                        <span className="text-sm" style={{ color: '#7A7A8A' }}>
+                            Olá, <strong style={{ color: '#F0EAD6' }}>{user.whatsapp}</strong>
+                        </span>
+                    </>
                 ) : (
                     <>
                         <Link
                             href="/register"
-                            className="px-4 py-2 text-sm md:text-base font-bold text-white border-2 border-white hover:bg-white/10 transition-colors text-center whitespace-nowrap"
-                            style={{ borderRadius: '8px' }}
+                            className="px-4 py-2 text-sm font-bold rounded-lg transition-all hover:bg-white/5"
+                            style={{ color: '#F0EAD6', border: '1px solid #2A2A32' }}
                         >
                             CRIAR CONTA
                         </Link>
                         <Link
                             href="/login"
-                            className="px-4 py-2 text-sm md:text-base font-bold text-[#1A1A1D] border-2 border-[#F5C518] bg-[#F5C518] hover:bg-[#F5C518]/90 transition-colors text-center whitespace-nowrap"
-                            style={{ borderRadius: '8px' }}
+                            className="px-5 py-2 text-sm font-black rounded-lg transition-all hover:opacity-90"
+                            style={{ backgroundColor: '#F5C518', color: '#0A0A0B' }}
                         >
                             ENTRAR
                         </Link>
@@ -92,46 +89,67 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                 )}
             </div>
 
-            {/* Mobile Menu Dropdown */}
+            {/* Mobile hamburger */}
+            <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="md:hidden p-2 transition-colors"
+                style={{ color: isMenuOpen ? '#F5C518' : '#F0EAD6' }}
+                aria-label="Menu"
+            >
+                {isMenuOpen ? <X size={26} /> : <Menu size={26} />}
+            </button>
+
+            {/* Mobile menu */}
             {isMenuOpen && (
                 <div
-                    className="absolute top-20 left-0 w-full flex flex-col items-center gap-6 py-8 shadow-xl md:hidden z-40"
-                    style={{ backgroundColor: '#101011', borderTop: '1px solid #2A2A2E' }}
+                    className="absolute top-[72px] left-0 w-full flex flex-col items-center gap-5 py-8 md:hidden z-40"
+                    style={{ backgroundColor: 'rgba(10,10,11,0.97)', borderTop: '1px solid #2A2A32' }}
                 >
-                    {user ? (
-                        <div className="flex flex-col items-center gap-4 text-white">
-                            <div className="flex flex-col items-center gap-1">
-                                <span className="text-sm font-medium opacity-70">Logado como</span>
-                                <span className="font-bold text-lg">{user.whatsapp}</span>
-                            </div>
+                    {navLinks.map(link => (
+                        <Link
+                            key={link.href}
+                            href={link.href}
+                            className="text-base font-medium hover:text-yellow-400 transition-colors"
+                            style={{ color: '#F0EAD6' }}
+                            onClick={() => setIsMenuOpen(false)}
+                        >
+                            {link.label}
+                        </Link>
+                    ))}
+                    <div
+                        className="flex flex-col gap-3 w-full px-8 pt-4"
+                        style={{ borderTop: '1px solid #2A2A32' }}
+                    >
+                        {user ? (
                             <Link
                                 href="/meus-tickets"
-                                className="text-base font-medium text-zinc-300 hover:text-white"
+                                className="w-full py-3 text-center font-bold rounded-lg"
+                                style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
                                 onClick={() => setIsMenuOpen(false)}
                             >
                                 Meus Tickets
                             </Link>
-                        </div>
-                    ) : (
-                        <div className="flex flex-col gap-4 w-full px-8">
-                            <Link
-                                href="/register"
-                                className="w-full px-4 py-3 text-base font-bold text-white border-2 border-white hover:bg-white/10 transition-colors text-center"
-                                style={{ borderRadius: '8px' }}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                CRIAR CONTA
-                            </Link>
-                            <Link
-                                href="/login"
-                                className="w-full px-4 py-3 text-base font-bold text-[#1A1A1D] border-2 border-[#F5C518] bg-[#F5C518] hover:bg-[#F5C518]/90 transition-colors text-center"
-                                style={{ borderRadius: '8px' }}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                ENTRAR
-                            </Link>
-                        </div>
-                    )}
+                        ) : (
+                            <>
+                                <Link
+                                    href="/register"
+                                    className="w-full py-3 text-center font-bold rounded-lg"
+                                    style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    CRIAR CONTA
+                                </Link>
+                                <Link
+                                    href="/login"
+                                    className="w-full py-3 text-center font-black rounded-lg"
+                                    style={{ backgroundColor: '#F5C518', color: '#0A0A0B' }}
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    ENTRAR
+                                </Link>
+                            </>
+                        )}
+                    </div>
                 </div>
             )}
         </header>
