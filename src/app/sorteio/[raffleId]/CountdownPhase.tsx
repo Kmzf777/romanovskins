@@ -303,12 +303,13 @@ export function CountdownPhase({
           50%       { opacity: 0.16; }
         }
 
-        /* Responsive background image */
+        /* Responsive background image — fixed to viewport so it always fills 100% */
         .dl-bg-img {
           background-image: url('/dlore9-16.png');
           background-size: cover;
           background-position: center top;
           background-repeat: no-repeat;
+          background-attachment: fixed;
         }
         @media (min-width: 640px) {
           .dl-bg-img {

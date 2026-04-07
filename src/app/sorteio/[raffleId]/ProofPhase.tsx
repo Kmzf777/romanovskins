@@ -93,12 +93,13 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
           100% { transform: translate(0, 0); }
         }
 
-        /* Responsive background image */
+        /* Responsive background image — fixed to viewport */
         .dlp-bg-img {
           background-image: url('/dlore9-16.png');
           background-size: cover;
           background-position: center top;
           background-repeat: no-repeat;
+          background-attachment: fixed;
         }
         @media (min-width: 640px) {
           .dlp-bg-img {
