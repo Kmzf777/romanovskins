@@ -109,7 +109,7 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
       `}</style>
 
       <div className="dl-proof-root dlp-bg-img min-h-screen text-white flex flex-col relative overflow-hidden"
-           style={{ background: '#090704' }}>
+           style={{ backgroundColor: '#090704' }}>
 
         {/* Background dark overlay */}
         <div className="absolute inset-0 pointer-events-none" style={{

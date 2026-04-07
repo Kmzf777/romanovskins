@@ -319,7 +319,7 @@ export function CountdownPhase({
       `}</style>
 
       <div className="dl-root dl-bg-img min-h-screen text-white flex flex-col relative overflow-hidden"
-           style={{ background: '#090704' }}>
+           style={{ backgroundColor: '#090704' }}>
 
         {/* ── Background image dark overlay (readability) ── */}
         <div className="absolute inset-0 pointer-events-none" style={{
