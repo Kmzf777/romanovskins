@@ -3,10 +3,9 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { CountdownPhase } from './CountdownPhase';
-import { RoulettePhase } from './RoulettePhase';
 import { ProofPhase } from './ProofPhase';
 
-type DrawPhase = 'countdown' | 'drawing' | 'drawn' | 'no_session';
+type DrawPhase = 'countdown' | 'drawn' | 'no_session';
 
 interface DrawSession {
   id: string;
@@ -38,8 +37,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
   const [phase, setPhase] = useState<DrawPhase>(() => {
     if (!initialSession) return 'no_session';
     if (initialSession.status === 'drawn') return 'drawn';
-    if (initialSession.status === 'drawing') return 'drawing';
-    return 'countdown';
+    return 'countdown'; // 'waiting' e 'drawing' ficam no countdown (roleta integrada)
   });
   const [drawError, setDrawError] = useState<string | null>(null);
   const drawTriggered = useRef(false);
@@ -79,9 +77,8 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
         (payload) => {
           const updated = payload.new as DrawSession;
           setSession(updated);
-          if (updated.status === 'drawing' || updated.status === 'drawn') {
-            setPhase(updated.status === 'drawn' ? 'drawn' : 'drawing');
-          }
+          // Não avança fase aqui — a CountdownPhase detecta winnerNumber
+          // e chama onDrawComplete quando a animação da roleta termina
         }
       )
       .on(
@@ -135,20 +132,9 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
           raffle={raffle}
           drawAt={session.draw_at}
           onCountdownEnd={triggerDraw}
+          onDrawComplete={() => setPhase('drawn')}
           drawError={drawError}
-        />
-      </Overlay>
-    );
-  }
-
-  if (phase === 'drawing' && session) {
-    return (
-      <Overlay>
-        <RoulettePhase
-          totalNumbers={raffle.total_numbers}
-          winnerNumber={session.winner_ticket_number ?? 1}
-          isResultReady={session.status === 'drawn' && session.winner_ticket_number !== null}
-          onAnimationEnd={() => setPhase('drawn')}
+          winnerNumber={session.winner_ticket_number}
         />
       </Overlay>
     );
@@ -176,7 +162,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     );
   }
 
-  // Estado 'drawing' enquanto aguarda o resultado chegar via Realtime
+  // Fallback (não deveria chegar aqui)
   return (
     <Overlay>
       <div className="min-h-full flex items-center justify-center text-white">
