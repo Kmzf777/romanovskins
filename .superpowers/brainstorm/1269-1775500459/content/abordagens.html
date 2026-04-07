@@ -1,0 +1,76 @@
+<h2>3 Abordagens para Completar o MVP</h2>
+<p class="subtitle">Qual sequência faz mais sentido para chegar ao ar com qualidade?</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Abordagem Cirúrgica</h3>
+      <p>Consertar apenas os 9 bugs críticos identificados — nada mais, nada menos. Cada fix é isolado, testável e não quebra nada adjacente.</p>
+      <div style="margin-top:12px">
+        <div style="font-size:12px;color:#4ade80;font-weight:600;margin-bottom:6px">✅ Prós</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Mais rápido de entregar</li>
+          <li>Menor risco de introduzir novos bugs</li>
+          <li>Scope bem delimitado</li>
+        </ul>
+        <div style="font-size:12px;color:#f87171;font-weight:600;margin-top:8px;margin-bottom:6px">⚠️ Contras</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Ainda vai precisar de um segundo sprint logo em seguida</li>
+          <li>UX ainda fraca no checkout (sem timer)</li>
+        </ul>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#71717a;background:#18181b;padding:8px;border-radius:6px">
+        <strong style="color:#a1a1aa">Escopo:</strong> Fix bugs críticos + pg_cron + sorteio Loteria Federal no admin
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>MVP Completo ⭐ Recomendado</h3>
+      <p>Bugs críticos + 3 UX essenciais que qualquer concorrente já tem: timer no checkout, progresso de cotas, e "meus tickets". Não são extras — são esperados pelo usuário.</p>
+      <div style="margin-top:12px">
+        <div style="font-size:12px;color:#4ade80;font-weight:600;margin-bottom:6px">✅ Prós</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Site chega ao ar já competitivo</li>
+          <li>Timer evita abandono no checkout</li>
+          <li>Progresso cria senso de urgência (converte mais)</li>
+          <li>Sem segunda sprint logo em seguida</li>
+        </ul>
+        <div style="font-size:12px;color:#f87171;font-weight:600;margin-top:8px;margin-bottom:6px">⚠️ Contras</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Leva ~30% mais tempo que a opção A</li>
+        </ul>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#71717a;background:#18181b;padding:8px;border-radius:6px">
+        <strong style="color:#a1a1aa">Escopo:</strong> Fix bugs + pg_cron + sorteio + timer checkout + barra de progresso + página "meus tickets"
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>MVP + Realtime</h3>
+      <p>Tudo da opção B, mais atualização em tempo real do grid de tickets via Supabase Realtime — quando alguém compra, todos veem na hora.</p>
+      <div style="margin-top:12px">
+        <div style="font-size:12px;color:#4ade80;font-weight:600;margin-bottom:6px">✅ Prós</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Feature premium que poucos concorrentes têm</li>
+          <li>Cria senso de urgência real ("alguém acabou de comprar!")</li>
+        </ul>
+        <div style="font-size:12px;color:#f87171;font-weight:600;margin-top:8px;margin-bottom:6px">⚠️ Contras</div>
+        <ul style="font-size:12px;color:#a1a1aa;padding-left:16px;margin:0">
+          <li>Adiciona complexidade de websocket/subscription</li>
+          <li>Pode ser adicionado depois sem impacto no resto</li>
+          <li>Mais tempo de entrega</li>
+        </ul>
+      </div>
+      <div style="margin-top:12px;font-size:11px;color:#71717a;background:#18181b;padding:8px;border-radius:6px">
+        <strong style="color:#a1a1aa">Escopo:</strong> Tudo da B + Supabase Realtime no TicketGrid
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,99 @@
+<h2>Design do MVP — Parte 1 de 3</h2>
+<p class="subtitle">Banco de dados + Correções críticas. Confirme antes de continuar.</p>
+
+<div class="section">
+  <h3>1. Mudanças no Schema do Banco</h3>
+  <p style="font-size:13px;color:#a1a1aa;margin-bottom:12px">Precisamos de 3 novos campos na tabela <code style="background:#27272a;padding:2px 6px;border-radius:4px">raffles</code> para suportar o sorteio e o histórico real:</p>
+  <div style="background:#18181b;border:1px solid #27272a;border-radius:8px;padding:16px;font-family:monospace;font-size:13px;color:#e4e4e7">
+    <span style="color:#71717a">-- Adicionar à tabela raffles:</span><br>
+    <span style="color:#a78bfa">ALTER TABLE</span> raffles <span style="color:#a78bfa">ADD COLUMN</span> drawn_at <span style="color:#34d399">TIMESTAMPTZ</span>;<br>
+    <span style="color:#a78bfa">ALTER TABLE</span> raffles <span style="color:#a78bfa">ADD COLUMN</span> winner_ticket_number <span style="color:#34d399">INT</span>;<br>
+    <span style="color:#a78bfa">ALTER TABLE</span> raffles <span style="color:#a78bfa">ADD COLUMN</span> winner_user_id <span style="color:#34d399">UUID REFERENCES users(id)</span>;<br><br>
+    <span style="color:#71717a">-- Status 'drawn' precisa ser adicionado ao CHECK:</span><br>
+    <span style="color:#71717a">-- active → closed → drawn</span>
+  </div>
+  <div style="margin-top:10px;font-size:12px;color:#facc15;background:#71360020;border:1px solid #facc1520;border-radius:6px;padding:10px">
+    ⚠️ O schema atual tem status <code>active/closed/cancelled</code> mas o código já usa <code>drawn</code> em vários lugares. Vamos padronizar: <strong>active → closed → drawn</strong>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. Bug Fixes Críticos (9 itens)</h3>
+  <div style="display:flex;flex-direction:column;gap:8px">
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">①</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">getRecentWinners() — query real no banco</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">JOIN raffles → tickets (winner_ticket_number) → users. Retornar os últimos 5 sorteios com status='drawn'.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">②</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">getPastRaffles() — query corrigida</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Trocar filtro de status para <code>.in('status', ['closed', 'drawn'])</code> e incluir dados do vencedor no SELECT.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">③</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Comprovante de Compra — transaction ID no returnUrl</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Em <code>payment-actions.ts</code>: gerar UUID antes do POST para o AbacatePay, salvar no banco com esse ID, e passar <code>returnUrl: …/checkout/success?tid=UUID</code> no payload.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">④</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Cotas Restantes — contagem real</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Em <code>getRaffles()</code>: fazer <code>SELECT COUNT(*) WHERE status='available'</code> junto com a query de rifas e retornar <code>available_count</code> no resultado.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">⑤</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Float / Condição — campos reais no banco</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Adicionar <code>float_value TEXT</code> e <code>wear_condition TEXT</code> à tabela <code>raffles</code>. Atualizar o form de criação no admin e o <code>TicketCard</code>. Se null → não exibir o badge.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">⑥</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Admin Dashboard — stats reais</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Query de contagem: total de rifas, rifas ativas, total de cotas vendidas, receita total. Cards no dashboard com dados reais.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">⑦</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Admin — Lista de Rifas com ações</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Tabela no dashboard listando todas as rifas com status, progresso e botões: "Ver detalhe", "Fechar rifa", "Realizar Sorteio".</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">⑧</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">pg_cron — liberar reservas expiradas</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Ativar extensão pg_cron no Supabase e rodar o script do PRD a cada 1 minuto. Sem isso, tickets reservados ficam presos para sempre quando o usuário abandona.</div>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;align-items:flex-start;background:#18181b;border:1px solid #27272a;border-radius:8px;padding:12px">
+      <span style="color:#4ade80;font-size:16px;flex-shrink:0">⑨</span>
+      <div>
+        <div style="font-weight:600;font-size:13px;color:#e4e4e7">Metadata do site — title/description/OG</div>
+        <div style="font-size:12px;color:#71717a;margin-top:2px">Atualizar <code>layout.tsx</code>: title "Romanov Rifas | Skins de CS2", description, e adicionar Open Graph básico para compartilhamento no WhatsApp.</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p style="font-size:13px;color:#a1a1aa;margin-top:16px">Essa parte está correta? Responda no terminal para continuar com a Parte 2 (Sorteio via Loteria Federal + Timer).</p>

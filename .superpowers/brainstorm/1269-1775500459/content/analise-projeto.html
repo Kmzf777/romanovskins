@@ -1,0 +1,187 @@
+<h2>Análise Completa: Romanov Rifas</h2>
+<p class="subtitle">O que está pronto, o que está quebrado, e o que os concorrentes têm que você não tem ainda.</p>
+
+<div class="section">
+  <h3 style="color:#4ade80;margin-bottom:12px">✅ Implementado (funciona ou quase)</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Auth por WhatsApp</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Login/cadastro via nome + WhatsApp com cookie de sessão 30 dias</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Grid de Tickets</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Visual com estados: disponível / reservado / vendido / selecionado</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Reserva Atômica</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Anti-race condition com UPDATE atômico no Supabase + rollback</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">PIX via AbacatePay</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Geração de cobrança PIX + redirecionamento + webhook de confirmação</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Checkout + Comprovante</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Resumo do pedido e página de sucesso com receipt</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Admin: Criar Rifa</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Formulário de criação + geração em lote dos tickets no banco</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">Home: Listagem</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Seções de rifas ativas, passadas e últimos ganhadores</div>
+    </div>
+    <div style="background:#14532d33;border:1px solid #4ade8033;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#4ade80">UI/Design Base</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Tema dark estilo CS:GO, amarelo primário, Space Grotesk</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3 style="color:#f87171;margin-bottom:12px">🚨 Crítico — Quebrado ou Faltando (MVP não está completo)</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px">
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Mecanismo de Sorteio</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Admin não tem como realizar um draw. Não há como escolher vencedor, fechar rifa nem registrar resultado.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Ganhadores — Dados Falsos</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">getRecentWinners() SEMPRE retorna mock hardcoded, mesmo com DB configurado. Nunca mostra dados reais.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Timer de 20min no Checkout</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">A reserva expira em 20min mas o usuário não vê nenhum contador. Pode deixar expirar sem saber.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ pg_cron não configurado</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">O cron que libera reservas expiradas está comentado no PRD. Sem ele, tickets reservados ficam presos para sempre.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Transaction ID no Success</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">A página de sucesso usa ?tid= mas payment-actions.ts não passa o ID na returnUrl. Comprovante sempre fica sem dados.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Cotas Restantes — Mock</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">No card da rifa, "Cotas Restantes" é Math.floor(total * 0.4). Nunca reflete o real.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Float/Condição — Mock</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Float "0.01231234135" e "Field-Tested" são hardcoded no ticket-card. Não vem do banco.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Admin sem Gestão de Rifas</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Dashboard mostra "--" em todos os stats. Não tem listagem, edição nem encerramento de rifas.</div>
+    </div>
+    <div style="background:#7f1d1d33;border:1px solid #f8717133;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#f87171">❌ Metadata do Site</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Title/description do layout.tsx ainda é "Create Next App". Péssimo para SEO e compartilhamento.</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3 style="color:#facc15;margin-bottom:12px">⚡ UX Importante — Falta mas não quebra</h3>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px">
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Barra de Progresso</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">% de cotas vendidas na listagem e na página de detalhe</div>
+    </div>
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Meus Tickets</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Página onde o usuário vê todos os tickets que comprou</div>
+    </div>
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Seleção Rápida</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Input "comprar X cotas aleatórias" em vez de clicar um por um</div>
+    </div>
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Notificações Toast</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Substituir alert() por toasts elegantes (Sonner/Radix)</div>
+    </div>
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Realtime do Grid</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Grid atualiza quando outro usuário compra (Supabase Realtime)</div>
+    </div>
+    <div style="background:#71360033;border:1px solid #facc1533;border-radius:8px;padding:12px">
+      <div style="font-weight:700;font-size:13px;color:#facc15">Compartilhar Rifa</div>
+      <div style="font-size:12px;color:#a1a1aa;margin-top:4px">Botão de compartilhar no WhatsApp direto da página da rifa</div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3 style="color:#818cf8;margin-bottom:12px">🏆 Concorrentes — Features que te diferenciam</h3>
+  <div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:13px">
+      <thead>
+        <tr style="background:#1e1b4b;color:#a5b4fc">
+          <th style="padding:10px;text-align:left;border-bottom:1px solid #312e81">Feature</th>
+          <th style="padding:10px;text-align:center;border-bottom:1px solid #312e81">Romanov</th>
+          <th style="padding:10px;text-align:center;border-bottom:1px solid #312e81">Reload Skins</th>
+          <th style="padding:10px;text-align:center;border-bottom:1px solid #312e81">MRP / Loot</th>
+          <th style="padding:10px;text-align:center;border-bottom:1px solid #312e81">CS2 Premium</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Sorteio (Draw)</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅ Loteria Federal</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅ Random.org</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Provably Fair / Transparência</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅ Provably Fair</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅ Random.org</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Pagamento PIX</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅ AbacatePay</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Progresso visual das cotas</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌ Mock</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#facc15">Parcial</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Timer de reserva visível</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#facc15">Parcial</td>
+          <td style="padding:10px;text-align:center;color:#facc15">Parcial</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Meus Tickets / Histórico</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+        </tr>
+        <tr style="border-bottom:1px solid #27272a">
+          <td style="padding:10px;color:#e4e4e7">Seleção aleatória / Quick Pick</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#facc15">Limitado</td>
+        </tr>
+        <tr>
+          <td style="padding:10px;color:#e4e4e7">Float / Condição da skin (real)</td>
+          <td style="padding:10px;text-align:center;color:#f87171">❌ Hardcoded</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+          <td style="padding:10px;text-align:center;color:#facc15">Parcial</td>
+          <td style="padding:10px;text-align:center;color:#4ade80">✅</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
