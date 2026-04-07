@@ -302,10 +302,30 @@ export function CountdownPhase({
           0%, 100% { opacity: 0.06; }
           50%       { opacity: 0.16; }
         }
+
+        /* Responsive background image */
+        .dl-bg-img {
+          background-image: url('/dlore9-16.png');
+          background-size: cover;
+          background-position: center top;
+          background-repeat: no-repeat;
+        }
+        @media (min-width: 640px) {
+          .dl-bg-img {
+            background-image: url('/dlore16-9.png');
+            background-position: center center;
+          }
+        }
       `}</style>
 
-      <div className="dl-root min-h-screen text-white flex flex-col relative overflow-hidden"
+      <div className="dl-root dl-bg-img min-h-screen text-white flex flex-col relative overflow-hidden"
            style={{ background: '#090704' }}>
+
+        {/* ── Background image dark overlay (readability) ── */}
+        <div className="absolute inset-0 pointer-events-none" style={{
+          background: 'rgba(9,7,4,0.72)',
+          zIndex: 0,
+        }}/>
 
         {/* ── SVG grain / parchment noise texture ── */}
         <svg className="absolute inset-0 w-full h-full pointer-events-none select-none" style={{ opacity: 0.025, zIndex: 0 }}>
