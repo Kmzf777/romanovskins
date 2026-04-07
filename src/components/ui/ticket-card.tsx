@@ -1,138 +1,140 @@
 'use client';
 
-import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Ticket } from 'lucide-react';
+import { Raffle } from '@/types';
 
 interface TicketCardProps {
-    raffle: {
-        id: string;
-        title: string;
-        description: string | null;
-        image_url: string;
-        price_per_ticket: number;
-        total_numbers: number;
-        status: string;
-        float_value?: string | null;
-        wear_condition?: string | null;
-        available_count?: number;
-        sold_count?: number;
-    };
+    raffle: Raffle;
 }
 
 export function TicketCard({ raffle }: TicketCardProps) {
-    const available = raffle.available_count ?? raffle.total_numbers;
     const sold = raffle.sold_count ?? 0;
-    const soldPercent = raffle.total_numbers > 0
-        ? Math.round((sold / raffle.total_numbers) * 100)
-        : 0;
+    const total = raffle.total_numbers;
+    const available = raffle.available_count ?? total;
+    const soldPercent = total > 0 ? Math.round((sold / total) * 100) : 0;
 
-    const progressColor =
-        soldPercent >= 80 ? 'bg-red-500' :
-        soldPercent >= 50 ? 'bg-yellow-500' :
-        'bg-green-500';
+    const discount = raffle.original_price && raffle.original_price > 0
+        ? Math.round((1 - raffle.price_per_ticket / raffle.original_price) * 100)
+        : null;
+
+    const isUrgent = soldPercent >= 80;
+    const progressColor = isUrgent ? '#E63946' : soldPercent >= 50 ? '#F5C518' : '#2DC653';
 
     return (
-        <Card className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-primary/50 transition-all duration-300">
-            <div className="flex flex-col md:flex-row">
-                {/* Left Side - Image Area */}
-                <div className="relative w-full md:w-80 aspect-square md:aspect-auto shrink-0 md:p-4 p-0">
-                    <div className="w-full h-full relative overflow-hidden rounded-xl">
-                        <img
-                            src={raffle.image_url}
-                            alt={raffle.title}
-                            className="w-full h-full object-cover transition-transform duration-500"
-                        />
-                        <div className="absolute top-0 left-0 p-2 w-full flex justify-between items-start text-[10px] sm:text-xs font-mono tracking-wider">
-                            {raffle.float_value && (
-                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-zinc-400 border border-zinc-800">
-                                    {raffle.float_value}
-                                </span>
-                            )}
-                            {raffle.wear_condition && (
-                                <span className="bg-black/60 backdrop-blur-sm px-2 py-1 rounded text-yellow-500 border border-zinc-800 uppercase ml-auto">
-                                    {raffle.wear_condition}
-                                </span>
-                            )}
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-900 via-transparent to-transparent md:bg-gradient-to-r md:from-transparent md:to-zinc-900/50" />
-                    </div>
-                </div>
-
-                {/* Right Side - Content */}
-                <div className="flex-1 p-6 flex flex-col justify-between relative">
-                    <div
-                        className="hidden md:block absolute left-0 top-6 bottom-6 w-[2px]"
-                        style={{
-                            backgroundImage: 'linear-gradient(to bottom, #27272a 50%, transparent 50%)',
-                            backgroundSize: '2px 14px',
-                            backgroundRepeat: 'repeat-y'
-                        }}
-                    />
-                    <div
-                        className="md:hidden absolute top-0 left-6 right-6 h-[2px]"
-                        style={{
-                            backgroundImage: 'linear-gradient(to right, #27272a 50%, transparent 50%)',
-                            backgroundSize: '14px 2px',
-                            backgroundRepeat: 'repeat-x'
-                        }}
-                    />
-
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-start gap-4">
-                            <div>
-                                <h3 className="text-xl md:text-2xl font-bold text-white group-hover:text-primary transition-colors line-clamp-1">
-                                    {raffle.title}
-                                </h3>
-                                <p className="text-sm text-zinc-400 mt-1 line-clamp-2">
-                                    {raffle.description}
-                                </p>
-                            </div>
-                            <div className="text-right shrink-0">
-                                <p className="text-sm text-zinc-500">Cota</p>
-                                <p className="text-2xl md:text-3xl font-black text-primary">
-                                    R$ {raffle.price_per_ticket.toFixed(2)}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-4 py-4 border-t border-zinc-800/50 border-b">
-                            <div>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider">Total de Cotas</p>
-                                <p className="text-lg font-semibold text-zinc-300">{raffle.total_numbers}</p>
-                            </div>
-                            <div>
-                                <p className="text-xs text-zinc-500 uppercase tracking-wider">Cotas Restantes</p>
-                                <p className="text-lg font-semibold text-zinc-300">{available}</p>
-                            </div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div>
-                            <div className="flex justify-between text-xs text-zinc-500 mb-1">
-                                <span>{sold} vendidas</span>
-                                <span>{soldPercent}%</span>
-                            </div>
-                            <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                                <div
-                                    className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
-                                    style={{ width: `${soldPercent}%` }}
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="pt-6 mt-auto">
-                        <Button asChild className="w-full h-14 text-lg bg-primary text-black hover:bg-primary/90 font-black tracking-widest uppercase shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all duration-300">
-                            <Link href={`/rifa/${raffle.id}`}>
-                                Comprar Cota
-                                <Ticket className="w-6 h-6 ml-3" />
-                            </Link>
-                        </Button>
-                    </div>
+        <Link
+            href={`/rifa/${raffle.id}`}
+            className="group block rounded-2xl overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-yellow-500"
+            style={{
+                backgroundColor: '#111114',
+                border: '1px solid #2A2A32',
+            }}
+            onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = '#F5C518';
+                (e.currentTarget as HTMLElement).style.boxShadow = '0 0 20px rgba(245,197,24,0.15)';
+            }}
+            onMouseLeave={e => {
+                (e.currentTarget as HTMLElement).style.borderColor = '#2A2A32';
+                (e.currentTarget as HTMLElement).style.boxShadow = 'none';
+            }}
+        >
+            {/* Image */}
+            <div className="relative aspect-square overflow-hidden">
+                <img
+                    src={raffle.image_url}
+                    alt={raffle.title}
+                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+                <div
+                    className="absolute bottom-0 left-0 right-0 h-1/2 pointer-events-none"
+                    style={{ background: 'linear-gradient(to top, #111114, transparent)' }}
+                />
+                {/* Badges */}
+                <div className="absolute top-2 left-2 right-2 flex justify-between">
+                    {raffle.float_value && (
+                        <span
+                            className="text-[10px] font-mono px-1.5 py-0.5 rounded"
+                            style={{
+                                backgroundColor: 'rgba(10,10,11,0.8)',
+                                color: '#7A7A8A',
+                                border: '1px solid #2A2A32',
+                                backdropFilter: 'blur(4px)',
+                            }}
+                        >
+                            {raffle.float_value}
+                        </span>
+                    )}
+                    {raffle.wear_condition && (
+                        <span
+                            className="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ml-auto"
+                            style={{
+                                backgroundColor: 'rgba(10,10,11,0.8)',
+                                color: '#F5C518',
+                                border: '1px solid rgba(245,197,24,0.3)',
+                                backdropFilter: 'blur(4px)',
+                            }}
+                        >
+                            {raffle.wear_condition}
+                        </span>
+                    )}
                 </div>
             </div>
-        </Card>
+
+            {/* Content */}
+            <div className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-2">
+                    <h3
+                        className="text-sm font-bold leading-tight line-clamp-2 flex-1"
+                        style={{ color: '#F0EAD6' }}
+                    >
+                        {raffle.title}
+                    </h3>
+                    {discount && (
+                        <span
+                            className="text-[10px] font-black px-1.5 py-0.5 rounded shrink-0"
+                            style={{ backgroundColor: '#E63946', color: '#fff' }}
+                        >
+                            -{discount}%
+                        </span>
+                    )}
+                </div>
+
+                <p
+                    className="text-xl font-black"
+                    style={{ fontFamily: 'var(--font-bebas-neue)', color: '#F5C518' }}
+                >
+                    R$ {raffle.price_per_ticket.toFixed(2).replace('.', ',')}
+                    <span className="text-xs ml-1" style={{ color: '#7A7A8A', fontFamily: 'var(--font-space-grotesk)' }}>
+                        / cota
+                    </span>
+                </p>
+
+                <div className="space-y-1">
+                    <div className="h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A32' }}>
+                        <div
+                            className="h-full rounded-full"
+                            style={{ width: `${soldPercent}%`, backgroundColor: progressColor, transition: 'width 0.5s ease' }}
+                        />
+                    </div>
+                    <div
+                        className="flex justify-between text-[10px]"
+                        style={{ color: '#4A4A5A', fontFamily: 'var(--font-geist-mono)' }}
+                    >
+                        <span>{soldPercent}% vendido</span>
+                        <span>{available} restantes</span>
+                    </div>
+                </div>
+
+                <div
+                    className="flex items-center justify-center w-full py-2.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all duration-300 group-hover:bg-yellow-500/20"
+                    style={{
+                        backgroundColor: 'rgba(245,197,24,0.08)',
+                        border: '1px solid rgba(245,197,24,0.3)',
+                        color: '#F5C518',
+                    }}
+                >
+                    PARTICIPAR →
+                </div>
+            </div>
+        </Link>
     );
 }
