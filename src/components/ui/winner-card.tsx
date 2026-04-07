@@ -1,71 +1,56 @@
-'use client';
-
-import { Card } from '@/components/ui/card';
-import { Trophy, Calendar } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+import { Winner } from '@/types';
 
 interface WinnerCardProps {
-    winner: {
-        id: string;
-        name: string;
-        raffle_title: string;
-        raffle_image: string;
-        ticket_number: number;
-        draw_date: string;
-    };
+    winner: Winner;
 }
 
 export function WinnerCard({ winner }: WinnerCardProps) {
+    const maskedName = (() => {
+        const parts = winner.name.split(' ');
+        if (parts.length === 1) return parts[0].charAt(0) + '***';
+        return `${parts[0]} ${parts[1].charAt(0)}.`;
+    })();
+
     return (
-        <Card className="group relative overflow-hidden bg-zinc-900 border-zinc-800 hover:border-primary/50 transition-all duration-300">
-            <div className="flex">
-                {/* Left Side - Image Area (Small width as requested) */}
-                <div className="relative w-28 sm:w-32 shrink-0 border-r border-zinc-800">
-                    <div className="w-full h-full relative overflow-hidden">
-                        <img
-                            src={winner.raffle_image}
-                            alt={winner.raffle_title}
-                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-zinc-900/50 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </div>
-                </div>
-
-                {/* Right Side - Content */}
-                <div className="flex-1 p-4 flex flex-col justify-between min-w-0">
-                    <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[10px] uppercase font-bold text-primary/80 tracking-widest border border-primary/20 px-1.5 py-0.5 rounded bg-primary/10">
-                                Ganhador
-                            </span>
-                            <span className="text-xs text-zinc-500 truncate flex-1 text-right font-mono">
-                                {winner.draw_date}
-                            </span>
-                        </div>
-
-                        <h3 className="font-bold text-white text-lg truncate group-hover:text-primary transition-colors">
-                            {winner.name}
-                        </h3>
-
-                        <p className="text-sm text-zinc-400 truncate mt-0.5">
-                            Ganhou: <span className="text-zinc-300">{winner.raffle_title}</span>
-                        </p>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-zinc-800/50 pt-3">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-yellow-500/10 p-1 rounded-md text-yellow-500">
-                                <Trophy className="w-3.5 h-3.5" />
-                            </div>
-                            <span className="text-xs font-medium text-zinc-300">
-                                Bilhete Premiado
-                            </span>
-                        </div>
-                        <span className="font-mono font-bold text-primary text-sm bg-primary/5 px-2 py-1 rounded border border-primary/10">
-                            #{winner.ticket_number}
-                        </span>
-                    </div>
+        <div
+            className="shrink-0 w-44 rounded-xl overflow-hidden transition-transform hover:scale-105"
+            style={{ backgroundColor: '#111114', border: '1px solid #2A2A32' }}
+        >
+            {/* Skin image */}
+            <div className="relative aspect-square overflow-hidden">
+                <img
+                    src={winner.raffle_image}
+                    alt={winner.raffle_title}
+                    className="w-full h-full object-cover"
+                />
+                <div
+                    className="absolute inset-0 pointer-events-none"
+                    style={{ background: 'linear-gradient(to top, #111114 0%, transparent 50%)' }}
+                />
+                <div
+                    className="absolute bottom-2 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full flex items-center justify-center"
+                    style={{ backgroundColor: 'rgba(10,10,11,0.9)', border: '1px solid rgba(245,197,24,0.5)' }}
+                >
+                    <Trophy size={14} style={{ color: '#F5C518' }} />
                 </div>
             </div>
-        </Card>
+
+            {/* Info */}
+            <div className="p-3 space-y-1">
+                <p className="text-xs font-bold line-clamp-1" style={{ color: '#F0EAD6' }}>
+                    {winner.raffle_title}
+                </p>
+                <p className="text-[11px]" style={{ color: '#7A7A8A' }}>
+                    {maskedName}
+                </p>
+                <p
+                    className="text-[10px]"
+                    style={{ color: '#4A4A5A', fontFamily: 'var(--font-geist-mono)' }}
+                >
+                    #{winner.ticket_number} · {winner.draw_date}
+                </p>
+            </div>
+        </div>
     );
 }
