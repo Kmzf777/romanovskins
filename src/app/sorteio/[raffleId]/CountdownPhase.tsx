@@ -1,23 +1,21 @@
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
-import { ChevronDown, ChevronUp, Shield, ExternalLink } from 'lucide-react';
+import { ChevronDown, ChevronUp, Shield, ExternalLink, RefreshCw } from 'lucide-react';
 
-// ─── Roulette constants (standard European layout) ────────────────────────
-const SEQ = [0,32,15,19,4,21,2,25,17,34,6,27,13,36,11,30,8,23,10,5,24,16,33,1,20,14,31,9,22,18,29,7,28,12,35,3,26];
-const REDS = new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
-const N = SEQ.length; // 37
-const SEG = 360 / N;
-
-function segColor(n: number) {
-  if (n === 0) return '#15803d';
-  return REDS.has(n) ? '#991b1b' : '#0c0c0c';
+// ─── SVG wheel helpers ────────────────────────────────────────────────────
+function polar(cx: number, cy: number, r: number, deg: number) {
+  const rad = (deg - 90) * (Math.PI / 180);
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
 }
 
-const WHEEL_BG = `conic-gradient(from 0deg, ${SEQ.map((n, i) =>
-  `${segColor(n)} ${(i * SEG).toFixed(3)}deg ${((i + 1) * SEG).toFixed(3)}deg`
-).join(',')})`;
+function sector(cx: number, cy: number, r: number, a1: number, a2: number) {
+  const s = polar(cx, cy, r, a1);
+  const e = polar(cx, cy, r, a2);
+  const lg = a2 - a1 > 180 ? 1 : 0;
+  return `M${cx},${cy} L${s.x.toFixed(2)},${s.y.toFixed(2)} A${r},${r},0,${lg},1,${e.x.toFixed(2)},${e.y.toFixed(2)}Z`;
+}
 
 // ─── Props ────────────────────────────────────────────────────────────────
 interface CountdownPhaseProps {
@@ -39,6 +37,9 @@ function fmt(ms: number) {
 export function CountdownPhase({
   raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber,
 }: CountdownPhaseProps) {
+  const N = raffle.total_numbers;
+  const SEG = 360 / N;
+
   const [timeLeft, setTimeLeft]   = useState(() => Math.max(0, new Date(drawAt).getTime() - Date.now()));
   const [viewers, setViewers]     = useState(1);
   const [faqOpen, setFaqOpen]     = useState(false);
@@ -46,111 +47,105 @@ export function CountdownPhase({
   // Roulette
   const [wheelAngle, setWheelAngle]       = useState(0);
   const [centerDisplay, setCenterDisplay] = useState<string | number>('?');
-  const [spinState, setSpinState]         = useState<'idle'|'waiting'|'spinning'|'stopped'>('idle');
-  const [ballAngle, setBallAngle]         = useState(0);
+  const [spinState, setSpinState]         = useState<'idle'|'waiting'|'spinning'|'stopped'|'error'>('idle');
+  const [stoppedAt, setStoppedAt]         = useState<number | null>(null); // winner segment index
 
-  const rafRef       = useRef<number | null>(null);
-  const angleRef     = useRef(0);
-  const ballRef      = useRef(0);
-  const endCalled    = useRef(false);
-  const spinStarted  = useRef(false);
+  const rafRef      = useRef<number | null>(null);
+  const angleRef    = useRef(0);
+  const endCalled   = useRef(false);
+  const spinStarted = useRef(false);
 
-  // ── Countdown tick ──────────────────────────────────────────────────────
+  const stopAnim = useCallback(() => {
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  // ── Show error even if stuck in 'waiting' ────────────────────────────────
+  useEffect(() => {
+    if (drawError && (spinState === 'waiting' || spinState === 'idle')) {
+      stopAnim();
+      setSpinState('error');
+      spinStarted.current = false;
+      endCalled.current = false;
+    }
+  }, [drawError, spinState, stopAnim]);
+
+  // ── Countdown tick ───────────────────────────────────────────────────────
   useEffect(() => {
     const iv = setInterval(() => {
       const rem = Math.max(0, new Date(drawAt).getTime() - Date.now());
       setTimeLeft(rem);
-      if (rem === 0 && !endCalled.current) {
+      if (rem === 0 && !endCalled.current && spinState === 'idle') {
         endCalled.current = true;
         setSpinState('waiting');
         onCountdownEnd();
       }
     }, 500);
     return () => clearInterval(iv);
-  }, [drawAt, onCountdownEnd]);
+  }, [drawAt, onCountdownEnd, spinState]);
 
-  // ── Kick spin when winnerNumber arrives ─────────────────────────────────
+  // ── Kick spin when winner arrives ────────────────────────────────────────
   useEffect(() => {
     if (winnerNumber == null || spinStarted.current) return;
-    if (spinState !== 'waiting' && spinState !== 'idle') return;
+    if (spinState !== 'waiting') return;
     spinStarted.current = true;
     setSpinState('spinning');
   }, [winnerNumber, spinState]);
 
-  // ── Wheel + ball animation ───────────────────────────────────────────────
+  // ── Wheel animation ──────────────────────────────────────────────────────
   useEffect(() => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    stopAnim();
 
-    if (spinState === 'idle') {
+    if (spinState === 'idle' || spinState === 'waiting' || spinState === 'error') {
+      const speed = spinState === 'waiting' ? 0.08 : spinState === 'error' ? 0 : 0.025;
+      if (speed === 0) return;
       const tick = () => {
-        angleRef.current += 0.03;
-        ballRef.current  -= 0.05;
+        angleRef.current += speed;
         setWheelAngle(angleRef.current);
-        setBallAngle(ballRef.current);
         rafRef.current = requestAnimationFrame(tick);
       };
       rafRef.current = requestAnimationFrame(tick);
-      return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
-    }
-
-    if (spinState === 'waiting') {
-      const tick = () => {
-        angleRef.current += 0.09;
-        ballRef.current  -= 0.18;
-        setWheelAngle(angleRef.current);
-        setBallAngle(ballRef.current);
-        rafRef.current = requestAnimationFrame(tick);
-      };
-      rafRef.current = requestAnimationFrame(tick);
-      return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+      return () => stopAnim();
     }
 
     if (spinState === 'spinning' && winnerNumber != null) {
-      const segIdx     = winnerNumber % N;
-      const segCenter  = (segIdx + 0.5) * SEG;
-      const targetMod  = (360 - segCenter + 360) % 360;
+      // Target: bring center of winner segment to top (pointer at 0°)
+      const segCenter  = (winnerNumber - 1 + 0.5) * SEG;
+      const targetMod  = (360 - segCenter % 360 + 360) % 360;
       const currentMod = ((angleRef.current % 360) + 360) % 360;
       const extraFwd   = (targetMod - currentMod + 360) % 360;
-      const totalSpin  = 8 * 360 + extraFwd;
+      const totalSpin  = 10 * 360 + extraFwd;
       const startAngle = angleRef.current;
-      const startBall  = ballRef.current;
-      const totalBall  = -(8 * 360 * 1.6 + extraFwd * 1.6);
       const t0 = performance.now();
-      const DURATION = 6000;
+      const DURATION = 5500;
 
       let numIv = setInterval(() => {
-        setCenterDisplay(Math.floor(Math.random() * raffle.total_numbers) + 1);
-      }, 60);
+        setCenterDisplay(Math.floor(Math.random() * N) + 1);
+      }, 55);
 
       const tick = (now: number) => {
         const elapsed = Math.min(now - t0, DURATION);
         const p = elapsed / DURATION;
         const e = 1 - Math.pow(1 - p, 5); // ease-out quint
-
         angleRef.current = startAngle + e * totalSpin;
-        ballRef.current  = startBall  + e * totalBall;
         setWheelAngle(angleRef.current);
-        setBallAngle(ballRef.current);
 
         if (elapsed < DURATION) {
           rafRef.current = requestAnimationFrame(tick);
         } else {
           clearInterval(numIv);
           setCenterDisplay(winnerNumber);
+          setStoppedAt(winnerNumber);
           setSpinState('stopped');
-          setTimeout(onDrawComplete, 3500);
+          setTimeout(onDrawComplete, 4000);
         }
       };
       rafRef.current = requestAnimationFrame(tick);
-      return () => {
-        if (rafRef.current) cancelAnimationFrame(rafRef.current);
-        clearInterval(numIv);
-      };
+      return () => { stopAnim(); clearInterval(numIv); };
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinState]);
 
-  // ── Presence (viewers) ──────────────────────────────────────────────────
+  // ── Presence ─────────────────────────────────────────────────────────────
   useEffect(() => {
     const supabase = createClient();
     const ch = supabase.channel(`presence:${raffle.id}`, {
@@ -164,14 +159,34 @@ export function CountdownPhase({
     return () => { supabase.removeChannel(ch); };
   }, [raffle.id]);
 
+  // ── Retry ─────────────────────────────────────────────────────────────────
+  const handleRetry = () => {
+    setSpinState('waiting');
+    endCalled.current = true;
+    spinStarted.current = false;
+    onCountdownEnd();
+  };
+
   const isUrgent = timeLeft < 60_000;
   const isStopped = spinState === 'stopped';
+  const CX = 140, CY = 140, R = 128, RLABEL = 100, HUB = 52;
 
-  // Ball position on inner track (r=108 from center of 280px wheel)
-  const ballR   = 108;
-  const ballRad = (ballAngle * Math.PI) / 180;
-  const ballX   = 140 + ballR * Math.sin(ballRad);
-  const ballY   = 140 - ballR * Math.cos(ballRad);
+  // ── Wheel SVG ─────────────────────────────────────────────────────────────
+  const wheelSegments = Array.from({ length: N }, (_, i) => {
+    const num     = i + 1;
+    const a1      = i * SEG;
+    const a2      = (i + 1) * SEG;
+    const isWinner = isStopped && stoppedAt === num;
+    const fill    = isWinner ? '#eab308' : (i % 2 === 0 ? '#18181b' : '#1f1f23');
+    const labelColor = isWinner ? '#000' : '#a1a1aa';
+
+    // Label position — center of segment arc at RLABEL
+    const midAngle = (a1 + a2) / 2;
+    const lp = polar(CX, CY, RLABEL, midAngle);
+    const fontSize = N <= 10 ? 14 : N <= 30 ? 10 : N <= 60 ? 7 : 5;
+
+    return { num, a1, a2, fill, labelColor, lp, midAngle, fontSize };
+  });
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white flex flex-col">
@@ -185,186 +200,160 @@ export function CountdownPhase({
       </header>
 
       {/* Main */}
-      <main className="flex-1 flex flex-col items-center justify-center px-4 gap-6 py-6">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 gap-5 py-6">
 
         {/* Title */}
         <div className="text-center">
-          <h1 className="text-lg font-bold text-white leading-tight">{raffle.title}</h1>
-          <p className="text-zinc-600 text-xs mt-0.5">{raffle.total_numbers} cotas</p>
+          <h1 className="text-xl font-bold text-white">{raffle.title}</h1>
+          <p className="text-zinc-600 text-xs mt-0.5">{N} cotas</p>
         </div>
 
-        {/* ── Roulette Wheel ── */}
-        <div className="relative" style={{ width: 280, height: 280 }}>
+        {/* ── Roulette ── */}
+        <div className="relative flex items-center justify-center">
 
-          {/* Pointer (triangle at top, outside wheel) */}
+          {/* Yellow pointer at top */}
           <div
             className="absolute z-20"
             style={{
-              top: -10,
-              left: '50%',
+              top: -12, left: '50%',
               transform: 'translateX(-50%)',
               width: 0, height: 0,
-              borderLeft: '9px solid transparent',
-              borderRight: '9px solid transparent',
-              borderTop: '18px solid #eab308',
-              filter: isStopped ? 'drop-shadow(0 0 8px #eab308)' : 'none',
-              transition: 'filter 0.5s',
+              borderLeft: '10px solid transparent',
+              borderRight: '10px solid transparent',
+              borderTop: `20px solid ${isStopped ? '#eab308' : '#713f12'}`,
+              filter: isStopped ? 'drop-shadow(0 0 10px #eab308)' : 'none',
+              transition: 'border-top-color 0.6s, filter 0.6s',
             }}
           />
 
-          {/* Gold outer rim */}
+          {/* Outer ring */}
           <div
-            className="absolute inset-0 rounded-full"
+            className="rounded-full"
             style={{
-              padding: 5,
+              padding: 4,
               background: isStopped
-                ? 'conic-gradient(from 0deg, #eab308, #fbbf24, #b45309, #fde68a, #eab308)'
-                : 'conic-gradient(from 0deg, #57534e, #a8a29e, #44403c, #78716c, #57534e)',
+                ? 'linear-gradient(135deg,#eab308,#fbbf24,#92400e,#fbbf24)'
+                : 'linear-gradient(135deg,#3f3f46,#52525b,#27272a,#52525b)',
               boxShadow: isStopped
-                ? '0 0 50px rgba(234,179,8,0.7), 0 0 100px rgba(234,179,8,0.3)'
+                ? '0 0 40px rgba(234,179,8,0.55), 0 0 80px rgba(234,179,8,0.2)'
                 : spinState === 'spinning'
-                ? '0 0 15px rgba(234,179,8,0.15)'
+                ? '0 0 12px rgba(234,179,8,0.1)'
                 : 'none',
-              transition: 'background 1s, box-shadow 1s',
+              transition: 'background 0.8s, box-shadow 0.8s',
             }}
           >
-            {/* ── The actual wheel ── */}
-            <div
-              className="w-full h-full rounded-full relative"
-              style={{
-                background: WHEEL_BG,
-                transform: `rotate(${wheelAngle}deg)`,
-                willChange: 'transform',
-              }}
+            {/* SVG wheel */}
+            <svg
+              width={280}
+              height={280}
+              viewBox="0 0 280 280"
+              style={{ transform: `rotate(${wheelAngle}deg)`, display: 'block', willChange: 'transform' }}
             >
-              {/* Segment dividers */}
-              {SEQ.map((_, i) => (
-                <div
-                  key={i}
-                  className="absolute top-0 left-1/2"
-                  style={{
-                    width: 1,
-                    height: '50%',
-                    background: 'rgba(255,255,255,0.18)',
-                    transformOrigin: '50% 100%',
-                    transform: `translateX(-50%) rotate(${i * SEG}deg)`,
-                  }}
+              {/* Segments */}
+              {wheelSegments.map(({ num, a1, a2, fill }) => (
+                <path
+                  key={num}
+                  d={sector(CX, CY, R, a1, a2)}
+                  fill={fill}
+                  stroke="#0a0a0a"
+                  strokeWidth={0.8}
                 />
               ))}
 
-              {/* Number labels */}
-              {SEQ.map((num, i) => {
-                const angleDeg = (i + 0.5) * SEG;
-                const rad = (angleDeg - 90) * (Math.PI / 180);
-                const r = 108;
-                const cx = 135, cy = 135;
-                const x = cx + r * Math.cos(rad);
-                const y = cy + r * Math.sin(rad);
-                return (
-                  <div
-                    key={`lbl-${i}`}
-                    className="absolute text-white font-bold select-none"
-                    style={{
-                      fontSize: 8,
-                      lineHeight: 1,
-                      left: x,
-                      top: y,
-                      transform: `translate(-50%,-50%) rotate(${angleDeg}deg)`,
-                      textShadow: '0 1px 2px rgba(0,0,0,0.8)',
-                    }}
-                  >
-                    {num}
-                  </div>
-                );
-              })}
-            </div>
+              {/* Labels — only if not too many */}
+              {N <= 120 && wheelSegments.map(({ num, lp, midAngle, labelColor, fontSize }) => (
+                <text
+                  key={`t${num}`}
+                  x={lp.x}
+                  y={lp.y}
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                  fill={labelColor}
+                  fontSize={fontSize}
+                  fontWeight="700"
+                  fontFamily="monospace"
+                  transform={`rotate(${midAngle},${lp.x},${lp.y})`}
+                >
+                  {num}
+                </text>
+              ))}
+            </svg>
           </div>
 
-          {/* SVG overlay for the ball */}
-          <svg
-            className="absolute inset-0 pointer-events-none"
-            width={280}
-            height={280}
-            style={{ zIndex: 15 }}
-          >
-            {/* Ball glow */}
-            {isStopped && (
-              <circle cx={ballX} cy={ballY} r={10} fill="rgba(234,179,8,0.3)" />
-            )}
-            {/* Ball */}
-            <circle
-              cx={ballX}
-              cy={ballY}
-              r={isStopped ? 8 : 6}
-              fill={isStopped ? '#eab308' : 'white'}
-              style={{
-                filter: isStopped
-                  ? 'drop-shadow(0 0 6px #eab308) drop-shadow(0 0 12px #eab308)'
-                  : 'drop-shadow(0 2px 3px rgba(0,0,0,0.8))',
-                transition: 'r 0.3s, fill 0.3s, filter 0.3s',
-              }}
-            />
-          </svg>
-
-          {/* Center hub */}
+          {/* Center hub — sits above SVG */}
           <div
             className="absolute rounded-full flex items-center justify-center"
             style={{
-              width: 86,
-              height: 86,
-              top: '50%', left: '50%',
-              transform: 'translate(-50%,-50%)',
-              background: 'radial-gradient(circle at 35% 30%, #3f3f46, #0a0a0a)',
-              border: `3px solid ${isStopped ? '#eab308' : '#27272a'}`,
+              width: HUB * 2,
+              height: HUB * 2,
+              background: 'radial-gradient(circle at 35% 30%, #27272a, #09090b)',
+              border: `2.5px solid ${isStopped ? '#eab308' : '#3f3f46'}`,
               boxShadow: isStopped
-                ? '0 0 24px rgba(234,179,8,0.6), inset 0 0 16px rgba(0,0,0,0.8)'
-                : 'inset 0 0 16px rgba(0,0,0,0.8)',
-              zIndex: 20,
-              transition: 'border-color 0.6s, box-shadow 0.6s',
+                ? '0 0 20px rgba(234,179,8,0.5), inset 0 2px 12px rgba(0,0,0,0.7)'
+                : 'inset 0 2px 12px rgba(0,0,0,0.7)',
+              zIndex: 10,
+              transition: 'border-color 0.5s, box-shadow 0.5s',
             }}
           >
             <span
               className="font-black font-mono tabular-nums"
               style={{
-                fontSize: String(centerDisplay).length > 4 ? 13 : String(centerDisplay).length > 2 ? 17 : 22,
-                color: isStopped ? '#eab308' : '#71717a',
-                textShadow: isStopped ? '0 0 14px rgba(234,179,8,0.8)' : 'none',
-                transition: 'color 0.4s, text-shadow 0.4s',
+                fontSize: String(centerDisplay).length > 4 ? 12 : String(centerDisplay).length > 3 ? 15 : 20,
+                color: isStopped ? '#eab308' : '#52525b',
+                textShadow: isStopped ? '0 0 12px rgba(234,179,8,0.7)' : 'none',
+                transition: 'color 0.3s, text-shadow 0.3s',
               }}
             >
-              {spinState === 'waiting' ? '•••' : centerDisplay}
+              {spinState === 'waiting' ? '···' : spinState === 'error' ? '!' : centerDisplay}
             </span>
           </div>
         </div>
 
-        {/* ── Status / Countdown ── */}
+        {/* ── Status section ── */}
         {isStopped && winnerNumber != null ? (
-          <div className="text-center space-y-1">
-            <p className="text-yellow-400 text-2xl font-black">🏆 #{winnerNumber}</p>
+          <div className="text-center space-y-1 py-2">
+            <p className="text-yellow-400 text-3xl font-black">🏆 #{winnerNumber}</p>
             <p className="text-zinc-500 text-xs">Abrindo comprovante...</p>
           </div>
+
         ) : spinState === 'spinning' ? (
           <p className="text-zinc-400 text-sm animate-pulse tracking-wide">Revelando o número vencedor...</p>
+
+        ) : spinState === 'error' ? (
+          <div className="flex flex-col items-center gap-3 max-w-xs text-center">
+            <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-5 py-4 w-full">
+              <p className="text-red-400 font-semibold text-sm">Erro no sorteio</p>
+              <p className="text-red-300/70 text-xs mt-1">{drawError}</p>
+            </div>
+            <button
+              onClick={handleRetry}
+              className="flex items-center gap-2 text-xs text-zinc-400 hover:text-white border border-white/10 hover:border-white/20 rounded-lg px-4 py-2 transition-colors"
+            >
+              <RefreshCw className="w-3 h-3" /> Tentar novamente
+            </button>
+          </div>
+
         ) : spinState === 'waiting' ? (
-          <p className="text-zinc-500 text-sm animate-pulse">Buscando resultado da Loteria Federal...</p>
+          <div className="flex flex-col items-center gap-2">
+            <p className="text-zinc-500 text-sm animate-pulse">Buscando resultado da Loteria Federal...</p>
+            {drawError && (
+              <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-center max-w-xs">
+                <p className="text-red-400 text-xs font-semibold">Erro: {drawError}</p>
+              </div>
+            )}
+          </div>
+
         ) : (
-          <div className="flex flex-col items-center gap-1">
+          /* Countdown */
+          <div className="flex flex-col items-center gap-1 text-center">
             <p className="text-xs uppercase tracking-widest text-zinc-600">Sorteio em</p>
             <div
-              className={`font-black font-mono tabular-nums transition-colors duration-500 ${
-                isUrgent ? 'text-red-400' : 'text-white'
-              }`}
-              style={{ fontSize: 'clamp(56px, 14vw, 88px)', fontFamily: 'var(--font-bebas-neue)' }}
+              className={`font-black font-mono tabular-nums transition-colors duration-500 ${isUrgent ? 'text-red-400' : 'text-white'}`}
+              style={{ fontSize: 'clamp(52px,13vw,84px)', fontFamily: 'var(--font-bebas-neue)' }}
             >
               {fmt(timeLeft)}
             </div>
             <p className="text-zinc-700 text-xs">{new Date(drawAt).toLocaleString('pt-BR')}</p>
-            {drawError && (
-              <div className="mt-3 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-center max-w-xs">
-                <p className="text-red-400 text-sm font-semibold">Erro no sorteio</p>
-                <p className="text-red-300/70 text-xs mt-0.5">{drawError}</p>
-              </div>
-            )}
           </div>
         )}
       </main>
@@ -397,8 +386,7 @@ export function CountdownPhase({
                 </div>
                 <div className="border-t border-white/5 pt-2 text-zinc-500 text-xs">
                   Exemplo: 1º Prêmio <span className="text-white">097680</span> → últimos2 = <span className="text-white">80</span>
-                  {' '}→ (80 % {raffle.total_numbers}) + 1 ={' '}
-                  <span className="text-yellow-400 font-bold">{(80 % raffle.total_numbers) + 1}</span>
+                  {' '}→ (80 % {N}) + 1 = <span className="text-yellow-400 font-bold">{(80 % N) + 1}</span>
                 </div>
               </div>
               <a
