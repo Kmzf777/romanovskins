@@ -14,6 +14,7 @@ interface DrawSession {
   winner_name: string | null;
   concurso: number | null;
   primeiro_premio: string | null;
+  target_concurso: number | null;
 }
 
 interface Raffle {
