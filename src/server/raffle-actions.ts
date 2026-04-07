@@ -5,8 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
-import { DRAW_COUNTDOWN_MINUTES } from '@/lib/draw-config';
+import { getLatestLotoFederal, calcularNumeroVencedor, getNextLotoFederalInfo } from '@/lib/loterias';
 
 // MOCK DATA
 const MOCK_RAFFLES = [
@@ -603,16 +602,14 @@ export async function getAllWinners(page = 1, perPage = 12) {
 }
 
 export async function openDrawSessionAction(
-  raffleId: string,
-  countdownMinutes?: number
-): Promise<{ success: boolean; drawUrl?: string; error?: string }> {
+  raffleId: string
+): Promise<{ success: boolean; drawUrl?: string; nextConcurso?: number; drawAt?: string; error?: string }> {
   const cookieStore = await cookies();
   const adminSession = cookieStore.get('admin_session')?.value;
   if (!adminSession) return { success: false, error: 'Não autorizado.' };
 
   const supabase = createAdminClient();
 
-  // Verificar que a rifa existe e está fechada
   const { data: raffle } = await supabase
     .from('raffles')
     .select('id, status')
@@ -623,26 +620,37 @@ export async function openDrawSessionAction(
   if (raffle.status !== 'closed')
     return { success: false, error: 'A rifa precisa estar fechada para abrir a sala.' };
 
-  // Verificar se já existe sessão ativa para esta rifa
+  // Return existing active session if one already exists
   const { data: existing } = await supabase
     .from('draw_sessions')
-    .select('id')
+    .select('target_concurso, draw_at')
     .eq('raffle_id', raffleId)
     .in('status', ['waiting', 'drawing'])
     .maybeSingle();
 
   if (existing) {
-    const drawUrl = `/sorteio/${raffleId}`;
-    return { success: true, drawUrl };
+    return {
+      success: true,
+      drawUrl: `/sorteio/${raffleId}`,
+      nextConcurso: existing.target_concurso ?? undefined,
+      drawAt: existing.draw_at,
+    };
   }
 
-  const minutes = countdownMinutes ?? DRAW_COUNTDOWN_MINUTES;
-  const drawAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+  // Fetch next concurso info from Loteria Federal
+  let nextInfo: { nextConcurso: number; drawAt: Date };
+  try {
+    nextInfo = await getNextLotoFederalInfo();
+  } catch (err) {
+    console.error('Error fetching next concurso info:', err);
+    return { success: false, error: 'Erro ao consultar próximo concurso da Loteria Federal.' };
+  }
 
   const { error } = await supabase.from('draw_sessions').insert({
     raffle_id: raffleId,
-    draw_at: drawAt,
-    countdown_minutes: minutes,
+    draw_at: nextInfo.drawAt.toISOString(),
+    countdown_minutes: 0, // kept for schema compat; no longer used
+    target_concurso: nextInfo.nextConcurso,
     status: 'waiting',
   });
 
@@ -651,5 +659,10 @@ export async function openDrawSessionAction(
     return { success: false, error: 'Erro ao criar sessão de sorteio.' };
   }
 
-  return { success: true, drawUrl: `/sorteio/${raffleId}` };
+  return {
+    success: true,
+    drawUrl: `/sorteio/${raffleId}`,
+    nextConcurso: nextInfo.nextConcurso,
+    drawAt: nextInfo.drawAt.toISOString(),
+  };
 }

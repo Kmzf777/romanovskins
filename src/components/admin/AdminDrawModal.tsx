@@ -3,10 +3,8 @@
 import { useState, useTransition } from 'react';
 import { openDrawSessionAction } from '@/server/raffle-actions';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { toast } from 'sonner';
 import { Radio, Loader2, X, Copy, ExternalLink } from 'lucide-react';
-import { DRAW_COUNTDOWN_MINUTES } from '@/lib/draw-config';
 
 export function AdminDrawModal({
   raffleId,
@@ -16,14 +14,12 @@ export function AdminDrawModal({
   raffleTitle: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
-  const [countdown, setCountdown] = useState(String(DRAW_COUNTDOWN_MINUTES));
   const [drawUrl, setDrawUrl] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleOpen = () => {
     startTransition(async () => {
-      const minutes = Math.max(1, parseInt(countdown) || DRAW_COUNTDOWN_MINUTES);
-      const res = await openDrawSessionAction(raffleId, minutes);
+      const res = await openDrawSessionAction(raffleId);
       if (res.success && res.drawUrl) {
         setDrawUrl(res.drawUrl);
       } else {
@@ -45,7 +41,6 @@ export function AdminDrawModal({
   const handleClose = () => {
     setIsOpen(false);
     setDrawUrl(null);
-    setCountdown(String(DRAW_COUNTDOWN_MINUTES));
   };
 
   return (
@@ -78,23 +73,10 @@ export function AdminDrawModal({
                 </p>
 
                 <div className="bg-zinc-800/50 rounded-lg p-4 mb-4 text-sm text-zinc-300">
-                  Uma sala pública será criada com uma contagem regressiva. Compartilhe o
-                  link no grupo do WhatsApp para que os participantes assistam ao sorteio
-                  ao vivo. O sorteio acontece automaticamente ao zerar.
-                </div>
-
-                <div className="mb-4">
-                  <label className="text-xs text-zinc-400 mb-1 block uppercase tracking-wider">
-                    Duração da contagem (minutos)
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={60}
-                    value={countdown}
-                    onChange={e => setCountdown(e.target.value)}
-                    className="font-mono w-28"
-                  />
+                  Uma sala pública será criada vinculada ao próximo concurso da Loteria
+                  Federal. O sorteio acontece automaticamente quando o resultado for
+                  publicado. Compartilhe o link no grupo do WhatsApp para que os
+                  participantes acompanhem ao vivo.
                 </div>
 
                 <Button
