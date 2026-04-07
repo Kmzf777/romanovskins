@@ -25,6 +25,7 @@ interface CountdownPhaseProps {
   onDrawComplete: () => void;
   drawError?: string | null;
   winnerNumber?: number | null;
+  targetConcurso?: number;
 }
 
 function fmt(ms: number) {
@@ -35,7 +36,7 @@ function fmt(ms: number) {
 
 // ─── Component ────────────────────────────────────────────────────────────
 export function CountdownPhase({
-  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber,
+  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber, targetConcurso,
 }: CountdownPhaseProps) {
   const N = raffle.total_numbers;
   const SEG = 360 / N;
@@ -47,8 +48,11 @@ export function CountdownPhase({
   // Roulette
   const [wheelAngle, setWheelAngle]       = useState(0);
   const [centerDisplay, setCenterDisplay] = useState<string | number>('?');
-  const [spinState, setSpinState]         = useState<'idle'|'waiting'|'spinning'|'stopped'|'error'>('idle');
+  const [spinState, setSpinState]         = useState<'idle'|'waiting'|'spinning'|'stopped'|'error'|'polling'>('idle');
   const [stoppedAt, setStoppedAt]         = useState<number | null>(null); // winner segment index
+
+  const [pollCountdown, setPollCountdown] = useState(60);
+  const pollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const rafRef      = useRef<number | null>(null);
   const angleRef    = useRef(0);
@@ -59,15 +63,39 @@ export function CountdownPhase({
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
   }, []);
 
-  // ── Show error even if stuck in 'waiting' ────────────────────────────────
+  // ── Show error / polling when result not yet available ────────────────────
   useEffect(() => {
-    if (drawError && (spinState === 'waiting' || spinState === 'idle')) {
-      stopAnim();
+    if (drawError === 'CONCURSO_NOT_AVAILABLE' && spinState === 'waiting') {
+      setSpinState('polling');
+      setPollCountdown(60);
+    } else if (drawError && drawError !== 'CONCURSO_NOT_AVAILABLE' && spinState === 'waiting') {
       setSpinState('error');
-      spinStarted.current = false;
-      endCalled.current = false;
     }
-  }, [drawError, spinState, stopAnim]);
+  }, [drawError, spinState]);
+
+  // ── Polling auto-retry countdown ──────────────────────────────────────────
+  useEffect(() => {
+    if (spinState !== 'polling') {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+      return;
+    }
+
+    pollIntervalRef.current = setInterval(() => {
+      setPollCountdown(prev => {
+        if (prev <= 1) {
+          clearInterval(pollIntervalRef.current!);
+          setSpinState('waiting');
+          onCountdownEnd();
+          return 60;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => {
+      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+    };
+  }, [spinState, onCountdownEnd]);
 
   // ── Countdown tick ───────────────────────────────────────────────────────
   useEffect(() => {
@@ -95,8 +123,8 @@ export function CountdownPhase({
   useEffect(() => {
     stopAnim();
 
-    if (spinState === 'idle' || spinState === 'waiting' || spinState === 'error') {
-      const speed = spinState === 'waiting' ? 0.08 : spinState === 'error' ? 0 : 0.025;
+    if (spinState === 'idle' || spinState === 'waiting' || spinState === 'error' || spinState === 'polling') {
+      const speed = (spinState === 'waiting' || spinState === 'polling') ? 0.08 : spinState === 'error' ? 0 : 0.025;
       if (speed === 0) return;
       const tick = () => {
         angleRef.current += speed;
@@ -304,7 +332,7 @@ export function CountdownPhase({
                 transition: 'color 0.3s, text-shadow 0.3s',
               }}
             >
-              {spinState === 'waiting' ? '···' : spinState === 'error' ? '!' : centerDisplay}
+              {(spinState === 'waiting' || spinState === 'polling') ? '···' : spinState === 'error' ? '!' : centerDisplay}
             </span>
           </div>
         </div>
@@ -318,6 +346,19 @@ export function CountdownPhase({
 
         ) : spinState === 'spinning' ? (
           <p className="text-zinc-400 text-sm animate-pulse tracking-wide">Revelando o número vencedor...</p>
+
+        ) : spinState === 'polling' ? (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <div className="w-8 h-8 rounded-full border-2 border-yellow-400/30 border-t-yellow-400 animate-spin" />
+            <p className="text-yellow-300 font-semibold text-sm text-center">
+              Aguardando resultado do Concurso {targetConcurso ?? ''}
+            </p>
+            <p className="text-zinc-500 text-xs text-center">
+              A Loteria Federal ainda não publicou o resultado.<br />
+              Próxima verificação em{' '}
+              <span className="text-zinc-300 font-mono">{pollCountdown}s</span>
+            </p>
+          </div>
 
         ) : spinState === 'error' ? (
           <div className="flex flex-col items-center gap-3 max-w-xs text-center">
@@ -354,6 +395,14 @@ export function CountdownPhase({
               {fmt(timeLeft)}
             </div>
             <p className="text-zinc-700 text-xs">{new Date(drawAt).toLocaleString('pt-BR')}</p>
+            {targetConcurso && spinState === 'idle' && (
+              <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700/50 text-xs font-mono">
+                <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-zinc-400">Concurso</span>
+                <span className="text-yellow-400 font-bold">{targetConcurso}</span>
+                <span className="text-zinc-500">· Loteria Federal</span>
+              </div>
+            )}
           </div>
         )}
       </main>
