@@ -50,9 +50,12 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     setDrawError(null);
     try {
       const res = await fetch(`/api/sorteio/${raffle.id}/draw`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setDrawError(data.error || 'Erro ao realizar sorteio.');
+        drawTriggered.current = false;
+      } else if (data.skipped) {
+        // Session not ready yet (draw_at in the future) — allow retry
         drawTriggered.current = false;
       }
     } catch (err) {

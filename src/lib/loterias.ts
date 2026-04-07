@@ -112,9 +112,23 @@ export async function getNextLotoFederalInfo(): Promise<{
     drawAt: Date;
 }> {
     const latest = await getLatestLotoFederal();
+    let nextConcurso = latest.concurso + 1;
+
+    // Guard: if nextConcurso is already published (stale API response), use +2
+    try {
+        await getLotoFederalByConcurso(nextConcurso);
+        // If we get here, the result is already published — skip to the next one
+        nextConcurso = latest.concurso + 2;
+    } catch (err) {
+        if (!String(err).includes('CONCURSO_NOT_AVAILABLE')) {
+            // Network error fetching guard — don't block on this, proceed with +1
+        }
+        // CONCURSO_NOT_AVAILABLE = not published yet, which is what we want
+    }
+
     return {
         currentConcurso: latest.concurso,
-        nextConcurso: latest.concurso + 1,
+        nextConcurso,
         drawAt: getNextLotoFederalDrawDate(),
     };
 }

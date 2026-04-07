@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
-import { getLatestLotoFederal, calcularNumeroVencedor, getNextLotoFederalInfo } from '@/lib/loterias';
+import { getLatestLotoFederal, calcularNumeroVencedor, getNextLotoFederalInfo, getLotoFederalByConcurso } from '@/lib/loterias';
 
 // MOCK DATA
 const MOCK_RAFFLES = [
@@ -489,7 +489,19 @@ export async function performDrawAction(raffleId: string, manualPrimeiroPremio?:
     if (manualPrimeiroPremio) {
         lotoResult = { concurso: 0, dataApuracao: '', primeiroPremio: manualPrimeiroPremio };
     } else {
-        lotoResult = await getLatestLotoFederal();
+        // Look up the committed target_concurso from the active draw session
+        const { data: activeSession } = await supabase
+            .from('draw_sessions')
+            .select('target_concurso')
+            .eq('raffle_id', raffleId)
+            .in('status', ['waiting', 'drawing'])
+            .maybeSingle();
+
+        if (activeSession?.target_concurso) {
+            lotoResult = await getLotoFederalByConcurso(activeSession.target_concurso);
+        } else {
+            lotoResult = await getLatestLotoFederal();
+        }
     }
 
     let winnerTicketNumber = calcularNumeroVencedor(lotoResult.primeiroPremio, raffle.total_numbers);
