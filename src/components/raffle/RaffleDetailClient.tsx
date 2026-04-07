@@ -6,21 +6,20 @@ import { reserveTicketsAction } from '@/server/raffle-actions';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import Link from 'next/link';
+import { ChevronLeft, Ticket } from 'lucide-react';
 
 export function RaffleDetailClient({ raffle, tickets, userId }: any) {
     const { selectedNumbers, clearCart } = useCartStore();
     const [isPending, startTransition] = useTransition();
     const router = useRouter();
 
-    // Calcular progresso
     const sold = tickets.filter((t: any) => t.status !== 'available').length;
     const soldPercent = raffle.total_numbers > 0
         ? Math.round((sold / raffle.total_numbers) * 100)
         : 0;
-    const progressColor =
-        soldPercent >= 80 ? 'bg-red-500' :
-        soldPercent >= 50 ? 'bg-yellow-500' :
-        'bg-green-500';
+    const isUrgent = soldPercent >= 80;
+    const progressColor = isUrgent ? '#E63946' : soldPercent >= 50 ? '#F5C518' : '#2DC653';
 
     const handleReserve = () => {
         if (!userId) {
@@ -39,47 +38,179 @@ export function RaffleDetailClient({ raffle, tickets, userId }: any) {
         });
     };
 
+    const totalPrice = (selectedNumbers.length * raffle.price_per_ticket).toFixed(2).replace('.', ',');
+
     return (
-        <div className="pb-24">
-            <div className="mb-6 bg-black/40 backdrop-blur-md border border-white/10 p-6 rounded-lg shadow-sm">
-                <div className="aspect-square relative mb-4 rounded-lg overflow-hidden bg-zinc-900/50 max-w-md mx-auto">
-                    <img src={raffle.image_url} alt={raffle.title} className="w-full h-full object-cover" />
-                </div>
-                <h1 className="text-3xl font-bold text-white">{raffle.title}</h1>
-                <p className="text-zinc-400 mt-2">{raffle.description}</p>
-                <div className="mt-4 flex items-center gap-4">
-                    <span className="text-2xl font-bold text-green-500">R$ {raffle.price_per_ticket.toFixed(2)}</span>
-                    <span className="text-sm text-zinc-500">por cota</span>
+        <div className="pb-32 relative z-10">
+            {/* Breadcrumb */}
+            <div className="py-4 mb-6">
+                <Link
+                    href="/"
+                    className="inline-flex items-center gap-1 text-sm transition-colors hover:text-white"
+                    style={{ color: '#7A7A8A' }}
+                >
+                    <ChevronLeft size={14} /> Voltar às rifas
+                </Link>
+            </div>
+
+            {/* Main layout */}
+            <div className="flex flex-col lg:flex-row gap-8">
+                {/* Left: Image */}
+                <div className="lg:w-96 shrink-0">
+                    <div
+                        className="rounded-2xl overflow-hidden aspect-square relative"
+                        style={{ backgroundColor: '#111114', border: '1px solid #2A2A32' }}
+                    >
+                        <img
+                            src={raffle.image_url}
+                            alt={raffle.title}
+                            className="w-full h-full object-cover"
+                            style={{ filter: 'drop-shadow(0 0 30px rgba(245,197,24,0.2))' }}
+                        />
+                        {/* Badges */}
+                        <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
+                            {raffle.wear_condition && (
+                                <span
+                                    className="px-2 py-1 rounded text-xs font-bold uppercase"
+                                    style={{
+                                        backgroundColor: 'rgba(10,10,11,0.85)',
+                                        color: '#F5C518',
+                                        border: '1px solid rgba(245,197,24,0.3)',
+                                    }}
+                                >
+                                    {raffle.wear_condition}
+                                </span>
+                            )}
+                            {raffle.float_value && (
+                                <span
+                                    className="px-2 py-1 rounded text-xs font-mono"
+                                    style={{
+                                        backgroundColor: 'rgba(10,10,11,0.85)',
+                                        color: '#7A7A8A',
+                                        border: '1px solid #2A2A32',
+                                    }}
+                                >
+                                    {raffle.float_value}
+                                </span>
+                            )}
+                        </div>
+                    </div>
                 </div>
 
-                {/* Progress Bar */}
-                <div className="mt-4">
-                    <div className="flex justify-between text-xs text-zinc-500 mb-1">
-                        <span>{sold} de {raffle.total_numbers} cotas vendidas</span>
-                        <span>{soldPercent}%</span>
+                {/* Right: Info + CTA */}
+                <div className="flex-1 space-y-6">
+                    <div>
+                        <h1
+                            className="leading-tight"
+                            style={{
+                                fontFamily: 'var(--font-bebas-neue)',
+                                fontSize: 'clamp(32px, 4vw, 52px)',
+                                color: '#F0EAD6',
+                            }}
+                        >
+                            {raffle.title}
+                        </h1>
+                        {raffle.description && (
+                            <p className="mt-2 text-sm leading-relaxed" style={{ color: '#7A7A8A' }}>
+                                {raffle.description}
+                            </p>
+                        )}
                     </div>
-                    <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                            className={`h-full rounded-full transition-all duration-500 ${progressColor}`}
-                            style={{ width: `${soldPercent}%` }}
-                        />
+
+                    {/* Price */}
+                    <div className="flex items-baseline gap-3">
+                        <span
+                            className="text-5xl font-black"
+                            style={{ fontFamily: 'var(--font-bebas-neue)', color: '#F5C518' }}
+                        >
+                            R$ {raffle.price_per_ticket.toFixed(2).replace('.', ',')}
+                        </span>
+                        <span className="text-sm" style={{ color: '#7A7A8A' }}>por cota</span>
+                    </div>
+
+                    {/* Progress */}
+                    <div
+                        className="p-4 rounded-xl space-y-3"
+                        style={{ backgroundColor: '#111114', border: '1px solid #2A2A32' }}
+                    >
+                        <div className="flex justify-between text-xs" style={{ color: '#7A7A8A', fontFamily: 'var(--font-geist-mono)' }}>
+                            <span>{sold} de {raffle.total_numbers} cotas vendidas</span>
+                            <span style={{ color: isUrgent ? '#E63946' : '#7A7A8A' }}>{soldPercent}%</span>
+                        </div>
+                        <div className="h-3 rounded-full overflow-hidden" style={{ backgroundColor: '#2A2A32' }}>
+                            <div
+                                className="h-full rounded-full transition-all duration-700"
+                                style={{ width: `${soldPercent}%`, backgroundColor: progressColor }}
+                            />
+                        </div>
+                        {isUrgent && (
+                            <p className="text-xs font-bold" style={{ color: '#E63946' }}>
+                                ⚡ Poucas cotas restantes!
+                            </p>
+                        )}
                     </div>
                 </div>
             </div>
 
-            <div className="bg-black/40 backdrop-blur-md border border-white/10 p-6 rounded-lg shadow-sm">
-                <h2 className="text-xl font-semibold mb-4 text-white">Escolha seus números</h2>
+            {/* Ticket Grid */}
+            <div
+                className="mt-10 p-6 rounded-2xl"
+                style={{ backgroundColor: '#111114', border: '1px solid #2A2A32' }}
+            >
+                <h2
+                    className="mb-6"
+                    style={{ fontFamily: 'var(--font-bebas-neue)', fontSize: '28px', color: '#F0EAD6' }}
+                >
+                    ESCOLHA SEUS NÚMEROS
+                </h2>
+                <div className="flex flex-wrap gap-2 text-xs mb-4">
+                    {[
+                        { color: '#2DC653', label: 'Disponível' },
+                        { color: '#F5C518', label: 'Selecionado' },
+                        { color: '#4A4A5A', label: 'Vendido' },
+                    ].map(item => (
+                        <div key={item.label} className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-sm" style={{ backgroundColor: item.color }} />
+                            <span style={{ color: '#7A7A8A' }}>{item.label}</span>
+                        </div>
+                    ))}
+                </div>
                 <TicketGrid tickets={tickets} raffleId={raffle.id} userId={userId} />
             </div>
 
+            {/* Sticky CTA */}
             {selectedNumbers.length > 0 && (
-                <div className="fixed bottom-0 left-0 w-full bg-zinc-900/90 backdrop-blur-xl border-t border-white/10 p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.5)] flex justify-between items-center z-50 px-4 md:px-8">
+                <div
+                    className="fixed bottom-0 left-0 w-full flex items-center justify-between gap-4 px-6 py-4 z-50"
+                    style={{
+                        backgroundColor: 'rgba(10,10,11,0.95)',
+                        backdropFilter: 'blur(16px)',
+                        borderTop: '1px solid #2A2A32',
+                    }}
+                >
                     <div>
-                        <p className="font-bold text-lg text-white">{selectedNumbers.length} cota(s)</p>
-                        <p className="text-sm text-zinc-400">Total: R$ {(selectedNumbers.length * raffle.price_per_ticket).toFixed(2)}</p>
+                        <p className="text-lg font-black" style={{ color: '#F0EAD6' }}>
+                            {selectedNumbers.length} cota{selectedNumbers.length > 1 ? 's' : ''}
+                        </p>
+                        <p
+                            className="text-sm"
+                            style={{ fontFamily: 'var(--font-geist-mono)', color: '#F5C518' }}
+                        >
+                            R$ {totalPrice}
+                        </p>
                     </div>
-                    <Button onClick={handleReserve} disabled={isPending} size="lg" className="bg-green-600 hover:bg-green-700 text-white border-0">
+                    <Button
+                        onClick={handleReserve}
+                        disabled={isPending}
+                        className="flex items-center gap-2 h-12 px-8 font-black uppercase tracking-wider rounded-xl"
+                        style={{
+                            backgroundColor: '#F5C518',
+                            color: '#0A0A0B',
+                            boxShadow: '0 0 20px rgba(245,197,24,0.3)',
+                        }}
+                    >
                         {isPending ? 'Reservando...' : 'Reservar Agora'}
+                        <Ticket size={18} />
                     </Button>
                 </div>
             )}
