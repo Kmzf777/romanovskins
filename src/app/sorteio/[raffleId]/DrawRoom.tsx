@@ -41,17 +41,25 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     if (initialSession.status === 'drawing') return 'drawing';
     return 'countdown';
   });
+  const [drawError, setDrawError] = useState<string | null>(null);
   const drawTriggered = useRef(false);
 
   // Dispara o sorteio via API (idempotente — qualquer viewer pode chamar)
   const triggerDraw = useCallback(async () => {
     if (drawTriggered.current) return;
     drawTriggered.current = true;
+    setDrawError(null);
     try {
-      await fetch(`/api/sorteio/${raffle.id}/draw`, { method: 'POST' });
+      const res = await fetch(`/api/sorteio/${raffle.id}/draw`, { method: 'POST' });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setDrawError(data.error || 'Erro ao realizar sorteio.');
+        drawTriggered.current = false;
+      }
     } catch (err) {
       console.error('Error triggering draw:', err);
-      drawTriggered.current = false; // permite retry
+      setDrawError('Erro de conexão. Tente recarregar a página.');
+      drawTriggered.current = false;
     }
   }, [raffle.id]);
 
@@ -98,66 +106,85 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     };
   }, [raffle.id]);
 
+  // Wrapper único: overlay fixed cobre Header, Footer e background do layout raiz
+  function Overlay({ children }: { children: React.ReactNode }) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-zinc-950 overflow-y-auto">
+        {children}
+      </div>
+    );
+  }
+
   if (phase === 'no_session') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="text-center space-y-3">
-          <p className="text-2xl font-bold text-zinc-400">Nenhum sorteio agendado</p>
-          <p className="text-zinc-600 text-sm">Aguarde o administrador abrir a sala.</p>
+      <Overlay>
+        <div className="min-h-full flex items-center justify-center text-white">
+          <div className="text-center space-y-3">
+            <p className="text-2xl font-bold text-zinc-400">Nenhum sorteio agendado</p>
+            <p className="text-zinc-600 text-sm">Aguarde o administrador abrir a sala.</p>
+          </div>
         </div>
-      </div>
+      </Overlay>
     );
   }
 
   if (phase === 'countdown' && session) {
     return (
-      <CountdownPhase
-        raffle={raffle}
-        drawAt={session.draw_at}
-        onCountdownEnd={triggerDraw}
-      />
+      <Overlay>
+        <CountdownPhase
+          raffle={raffle}
+          drawAt={session.draw_at}
+          onCountdownEnd={triggerDraw}
+          drawError={drawError}
+        />
+      </Overlay>
     );
   }
 
   if (phase === 'drawing' && session) {
     return (
-      <RoulettePhase
-        totalNumbers={raffle.total_numbers}
-        winnerNumber={session.winner_ticket_number ?? 1}
-        isResultReady={session.status === 'drawn' && session.winner_ticket_number !== null}
-        onAnimationEnd={() => setPhase('drawn')}
-      />
+      <Overlay>
+        <RoulettePhase
+          totalNumbers={raffle.total_numbers}
+          winnerNumber={session.winner_ticket_number ?? 1}
+          isResultReady={session.status === 'drawn' && session.winner_ticket_number !== null}
+          onAnimationEnd={() => setPhase('drawn')}
+        />
+      </Overlay>
     );
   }
 
   if (phase === 'drawn' && session?.winner_ticket_number !== null) {
     return (
-      <ProofPhase
-        raffle={raffle}
-        session={session!}
-      />
+      <Overlay>
+        <ProofPhase raffle={raffle} session={session!} />
+      </Overlay>
     );
   }
 
   // drawn mas winner_ticket_number ainda nulo (edge case de falha parcial)
   if (phase === 'drawn') {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-        <div className="text-center space-y-3">
-          <p className="text-2xl font-bold text-zinc-400">Aguardando resultado...</p>
-          <p className="text-zinc-600 text-sm">Resultado será atualizado em breve.</p>
+      <Overlay>
+        <div className="min-h-full flex items-center justify-center text-white">
+          <div className="text-center space-y-3">
+            <p className="text-2xl font-bold text-zinc-400">Aguardando resultado...</p>
+            <p className="text-zinc-600 text-sm">Resultado será atualizado em breve.</p>
+          </div>
         </div>
-      </div>
+      </Overlay>
     );
   }
 
   // Estado 'drawing' enquanto aguarda o resultado chegar via Realtime
   return (
-    <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-white">
-      <div className="text-center space-y-4 animate-pulse">
-        <div className="text-6xl font-black text-yellow-400">⚡</div>
-        <p className="text-xl font-bold">Sorteando...</p>
+    <Overlay>
+      <div className="min-h-full flex items-center justify-center text-white">
+        <div className="text-center space-y-4 animate-pulse">
+          <div className="text-6xl font-black text-yellow-400">⚡</div>
+          <p className="text-xl font-bold">Sorteando...</p>
+        </div>
       </div>
-    </div>
+    </Overlay>
   );
 }

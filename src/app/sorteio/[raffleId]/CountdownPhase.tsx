@@ -9,6 +9,7 @@ interface CountdownPhaseProps {
   raffle: { id: string; title: string; image_url: string; total_numbers: number };
   drawAt: string;
   onCountdownEnd: () => void;
+  drawError?: string | null;
 }
 
 function formatTime(ms: number) {
@@ -19,7 +20,7 @@ function formatTime(ms: number) {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
 }
 
-export function CountdownPhase({ raffle, drawAt, onCountdownEnd }: CountdownPhaseProps) {
+export function CountdownPhase({ raffle, drawAt, onCountdownEnd, drawError }: CountdownPhaseProps) {
   const [timeLeft, setTimeLeft] = useState(() =>
     Math.max(0, new Date(drawAt).getTime() - Date.now())
   );
@@ -111,6 +112,12 @@ export function CountdownPhase({ raffle, drawAt, onCountdownEnd }: CountdownPhas
           <p className="text-zinc-600 text-xs">
             {new Date(drawAt).toLocaleString('pt-BR')}
           </p>
+          {drawError && (
+            <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 text-center max-w-sm">
+              <p className="text-red-400 text-sm font-semibold">Erro no sorteio</p>
+              <p className="text-red-300/80 text-xs mt-1">{drawError}</p>
+            </div>
+          )}
         </div>
       </main>
 
