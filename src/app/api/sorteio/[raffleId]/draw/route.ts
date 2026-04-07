@@ -64,10 +64,11 @@ export async function POST(
     }
 
     // 5. Fetch the specific committed concurso result
+    //    force=true skips to latest (used only for animation testing)
     //    Falls back to latest if target_concurso is not set (legacy sessions)
     let lotoResult;
     try {
-      if (session.target_concurso) {
+      if (session.target_concurso && !force) {
         lotoResult = await getLotoFederalByConcurso(session.target_concurso);
       } else {
         lotoResult = await getLatestLotoFederal();
