@@ -43,6 +43,24 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
   const [drawError, setDrawError] = useState<string | null>(null);
   const drawTriggered = useRef(false);
 
+  // DEBUG: força sorteio imediato ignorando draw_at (remover antes de produção)
+  const triggerDrawForce = useCallback(async () => {
+    drawTriggered.current = true;
+    setDrawError(null);
+    try {
+      const res = await fetch(`/api/sorteio/${raffle.id}/draw?force=true`, { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setDrawError(data.error || 'Erro ao realizar sorteio.');
+        drawTriggered.current = false;
+      }
+    } catch (err) {
+      console.error('Error forcing draw:', err);
+      setDrawError('Erro de conexão.');
+      drawTriggered.current = false;
+    }
+  }, [raffle.id]);
+
   // Dispara o sorteio via API (idempotente — qualquer viewer pode chamar)
   const triggerDraw = useCallback(async () => {
     if (drawTriggered.current) return;
@@ -140,6 +158,7 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
           drawError={drawError}
           winnerNumber={session.winner_ticket_number}
           targetConcurso={session.target_concurso ?? undefined}
+          onForceStart={triggerDrawForce}
         />
       </Overlay>
     );

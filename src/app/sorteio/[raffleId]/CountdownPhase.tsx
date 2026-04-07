@@ -26,6 +26,8 @@ interface CountdownPhaseProps {
   drawError?: string | null;
   winnerNumber?: number | null;
   targetConcurso?: number;
+  /** DEBUG ONLY — remove before production */
+  onForceStart?: () => void;
 }
 
 function fmt(ms: number) {
@@ -36,7 +38,7 @@ function fmt(ms: number) {
 
 // ─── Component ────────────────────────────────────────────────────────────
 export function CountdownPhase({
-  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber, targetConcurso,
+  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber, targetConcurso, onForceStart,
 }: CountdownPhaseProps) {
   const N = raffle.total_numbers;
   const SEG = 360 / N;
@@ -402,6 +404,19 @@ export function CountdownPhase({
                 <span className="text-yellow-400 font-bold">{targetConcurso}</span>
                 <span className="text-zinc-500">· Loteria Federal</span>
               </div>
+            )}
+            {onForceStart && spinState === 'idle' && (
+              <button
+                onClick={() => {
+                  setSpinState('waiting');
+                  endCalled.current = true;
+                  spinStarted.current = false;
+                  onForceStart();
+                }}
+                className="mt-4 px-5 py-2 rounded-lg border border-dashed border-yellow-500/40 text-yellow-400 text-xs font-semibold hover:bg-yellow-500/10 transition-colors"
+              >
+                ▶ Iniciar Sorteio (teste)
+              </button>
             )}
           </div>
         )}

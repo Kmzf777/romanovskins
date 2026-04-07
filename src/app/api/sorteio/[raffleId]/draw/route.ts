@@ -3,20 +3,25 @@ import { createAdminClient } from '@/lib/supabase/server';
 import { getLotoFederalByConcurso, getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ raffleId: string }> }
 ) {
   const { raffleId } = await params;
   const supabase = createAdminClient();
+  const force = req.nextUrl.searchParams.get('force') === 'true';
 
-  // 1. Find waiting session with draw_at <= now()
-  const { data: session } = await supabase
+  // 1. Find waiting session (skip draw_at check when force=true for debug)
+  let query = supabase
     .from('draw_sessions')
     .select('*')
     .eq('raffle_id', raffleId)
-    .eq('status', 'waiting')
-    .lte('draw_at', new Date().toISOString())
-    .maybeSingle();
+    .eq('status', 'waiting');
+
+  if (!force) {
+    query = query.lte('draw_at', new Date().toISOString());
+  }
+
+  const { data: session } = await query.maybeSingle();
 
   if (!session) {
     return NextResponse.json({ ok: true, skipped: true });
