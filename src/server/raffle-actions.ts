@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { cookies } from 'next/headers';
 import { getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
+import { DRAW_COUNTDOWN_MINUTES } from '@/lib/draw-config';
 
 // MOCK DATA
 const MOCK_RAFFLES = [
@@ -599,4 +600,56 @@ export async function getAllWinners(page = 1, perPage = 12) {
     }));
 
     return { winners, total: count ?? 0 };
+}
+
+export async function openDrawSessionAction(
+  raffleId: string,
+  countdownMinutes?: number
+): Promise<{ success: boolean; drawUrl?: string; error?: string }> {
+  const cookieStore = await cookies();
+  const adminSession = cookieStore.get('admin_session')?.value;
+  if (!adminSession) return { success: false, error: 'Não autorizado.' };
+
+  const supabase = createAdminClient();
+
+  // Verificar que a rifa existe e está fechada
+  const { data: raffle } = await supabase
+    .from('raffles')
+    .select('id, status')
+    .eq('id', raffleId)
+    .single();
+
+  if (!raffle) return { success: false, error: 'Rifa não encontrada.' };
+  if (raffle.status !== 'closed')
+    return { success: false, error: 'A rifa precisa estar fechada para abrir a sala.' };
+
+  // Verificar se já existe sessão ativa para esta rifa
+  const { data: existing } = await supabase
+    .from('draw_sessions')
+    .select('id')
+    .eq('raffle_id', raffleId)
+    .in('status', ['waiting', 'drawing'])
+    .maybeSingle();
+
+  if (existing) {
+    const drawUrl = `/sorteio/${raffleId}`;
+    return { success: true, drawUrl };
+  }
+
+  const minutes = countdownMinutes ?? DRAW_COUNTDOWN_MINUTES;
+  const drawAt = new Date(Date.now() + minutes * 60 * 1000).toISOString();
+
+  const { error } = await supabase.from('draw_sessions').insert({
+    raffle_id: raffleId,
+    draw_at: drawAt,
+    countdown_minutes: minutes,
+    status: 'waiting',
+  });
+
+  if (error) {
+    console.error('Error creating draw session:', error);
+    return { success: false, error: 'Erro ao criar sessão de sorteio.' };
+  }
+
+  return { success: true, drawUrl: `/sorteio/${raffleId}` };
 }
