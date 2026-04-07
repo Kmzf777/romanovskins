@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminClient } from '@/lib/supabase/server';
-import { getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
+import { getLotoFederalByConcurso, getLatestLotoFederal, calcularNumeroVencedor } from '@/lib/loterias';
 
 export async function POST(
   _req: NextRequest,
@@ -9,7 +9,7 @@ export async function POST(
   const { raffleId } = await params;
   const supabase = createAdminClient();
 
-  // 1. Buscar draw_session waiting com draw_at <= now()
+  // 1. Find waiting session with draw_at <= now()
   const { data: session } = await supabase
     .from('draw_sessions')
     .select('*')
@@ -19,26 +19,24 @@ export async function POST(
     .maybeSingle();
 
   if (!session) {
-    // Sessão não existe, já foi processada, ou ainda não é hora — ignorar
     return NextResponse.json({ ok: true, skipped: true });
   }
 
-  // 2. Atualizar atomicamente para 'drawing' (apenas 1 request vence)
+  // 2. Atomically claim the session (only 1 concurrent request wins)
   const { data: claimed, error: claimError } = await supabase
     .from('draw_sessions')
     .update({ status: 'drawing' })
     .eq('id', session.id)
-    .eq('status', 'waiting') // condição atômica: só atualiza se ainda 'waiting'
+    .eq('status', 'waiting')
     .select()
     .maybeSingle();
 
   if (claimError || !claimed) {
-    // Outro request já ganhou a corrida
     return NextResponse.json({ ok: true, skipped: true });
   }
 
   try {
-    // 3. Buscar raffle
+    // 3. Fetch raffle
     const { data: raffle } = await supabase
       .from('raffles')
       .select('*')
@@ -49,7 +47,7 @@ export async function POST(
       throw new Error('Rifa não encontrada ou não está fechada.');
     }
 
-    // 4. Buscar tickets vendidos
+    // 4. Fetch sold tickets
     const { data: soldTickets } = await supabase
       .from('tickets')
       .select('ticket_number, user_id')
@@ -60,14 +58,36 @@ export async function POST(
       throw new Error('Nenhuma cota vendida.');
     }
 
-    // 5. Buscar resultado da Loteria Federal
-    const lotoResult = await getLatestLotoFederal();
+    // 5. Fetch the specific committed concurso result
+    //    Falls back to latest if target_concurso is not set (legacy sessions)
+    let lotoResult;
+    try {
+      if (session.target_concurso) {
+        lotoResult = await getLotoFederalByConcurso(session.target_concurso);
+      } else {
+        lotoResult = await getLatestLotoFederal();
+      }
+    } catch (err) {
+      if (String(err).includes('CONCURSO_NOT_AVAILABLE')) {
+        // Result not published yet — revert to waiting so client can retry
+        await supabase
+          .from('draw_sessions')
+          .update({ status: 'waiting' })
+          .eq('id', session.id);
+        return NextResponse.json(
+          { ok: false, error: 'CONCURSO_NOT_AVAILABLE' },
+          { status: 503 }
+        );
+      }
+      throw err;
+    }
+
     let winnerTicketNumber = calcularNumeroVencedor(
       lotoResult.primeiroPremio,
       raffle.total_numbers
     );
 
-    // 6. Encontrar dono do ticket (com fallback para ticket mais próximo)
+    // 6. Find ticket owner (with fallback to nearest sold ticket)
     let winnerTicket = soldTickets.find(t => t.ticket_number === winnerTicketNumber);
     if (!winnerTicket) {
       winnerTicket = soldTickets.reduce((closest, t) => {
@@ -78,7 +98,7 @@ export async function POST(
       winnerTicketNumber = winnerTicket.ticket_number;
     }
 
-    // 7. Buscar nome do ganhador
+    // 7. Fetch winner name
     const { data: winnerUser } = await supabase
       .from('users')
       .select('name')
@@ -87,7 +107,7 @@ export async function POST(
 
     const winnerName = winnerUser?.name ?? 'Desconhecido';
 
-    // 8. Atualizar raffle como 'drawn'
+    // 8. Mark raffle as drawn
     await supabase
       .from('raffles')
       .update({
@@ -98,7 +118,7 @@ export async function POST(
       })
       .eq('id', raffleId);
 
-    // 9. Atualizar draw_session como 'drawn' com resultado (dispara Realtime para todos)
+    // 9. Update draw_session as drawn (triggers Realtime for all viewers)
     await supabase
       .from('draw_sessions')
       .update({
@@ -113,7 +133,7 @@ export async function POST(
     return NextResponse.json({ ok: true, winnerTicketNumber });
   } catch (err) {
     console.error('Draw error:', err);
-    // Reverter status para 'waiting' em caso de erro para permitir retry
+    // Revert to waiting to allow retry
     await supabase
       .from('draw_sessions')
       .update({ status: 'waiting' })
