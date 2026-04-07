@@ -1,0 +1,68 @@
+{
+  "meta": {
+    "model": "flux-dev",
+    "tool": "nano banana2",
+    "purpose": "Background image for live roulette draw room — Dragon Lore aesthetic, dark gambling den atmosphere",
+    "output_format": "PNG",
+    "width": 1920,
+    "height": 1080,
+    "steps": 35,
+    "cfg_scale": 7.0,
+    "sampler": "dpmpp_2m_karras",
+    "seed": -1,
+    "clip_skip": 2,
+    "hires_fix": true,
+    "hires_upscale": 1.5,
+    "hires_steps": 20,
+    "denoising_strength": 0.45
+  },
+
+  "prompt": "ultra detailed digital painting, wide cinematic panoramic background scene, dark medieval dragon's treasure vault interior, ancient stone chamber with massive carved stone walls covered in intricate Celtic knotwork engravings glowing faintly amber gold, ornate illuminated manuscript decorative borders framing the scene with geometric diamond lozenge pattern in aged gold leaf, a massive serpentine dragon with wingspan partially visible in upper background rendered in Dragon Lore AWP skin style with golden Celtic knotwork scales body markings, dragon exhales soft glowing breath that illuminates the chamber in warm amber golden light, stone floor covered with ancient gold coins treasure parchment scrolls, atmosphere heavy with golden dust particles suspended in dark air, color palette strictly: deep warm black (#0a0705) background, rich metallic gold (#c8960a #d4af37) for decorations and dragon scales, amber fire (#e07c1e) for glow, cream ivory (#f0ddb0) for highlights, NO orange NO blue NO purple, candlelight quality warm illumination from multiple hidden sources, epic fantasy aesthetic, photorealistic textures, masterpiece quality, 8k render, dramatic volumetric god rays of amber light through cracked ceiling, decorative diamond lattice stone pattern on walls at low opacity, ornate golden border trim along all edges with Celtic interlace detail, foreground slightly dark and blurred for UI overlay legibility, center of image relatively open and dark for text placement, hyper detailed stone texture, aged parchment vignette, cinematic color grading warm amber grade",
+
+  "negative_prompt": "text, watermark, signature, logo, UI, interface, modern, technology, neon, purple, blue, pink, cyan, white background, bright white, day lighting, outdoor, nature, people, human faces, anime, cartoon, flat design, low quality, blurry (except intentional depth of field), jpeg artifacts, oversaturated, orange dominant (amber gold only), generic fantasy, generic background, plain texture, monotone, gray, cold colors, fluorescent",
+
+  "style_notes": {
+    "primary_reference": "CS2 AWP Dragon Lore skin — cream ivory base with rich gold Celtic knotwork engravings, fire-breathing dragon in red-orange gradient transitioning to gold body",
+    "secondary_reference": "Medieval illuminated manuscripts — intricate border decorations, gold leaf ornaments, lapis lazuli rich backgrounds (but replace lapis with very dark warm black)",
+    "mood": "Ancient wealth, forbidden ritual, draconic prophecy — a gambling room from a fantasy world",
+    "lighting": "Warm amber single source from below/center, like a divination orb or forge, casting dramatic shadows upward"
+  },
+
+  "color_palette": {
+    "primary_background": "#090704",
+    "secondary_background": "#120e06",
+    "gold_primary": "#c8960a",
+    "gold_light": "#d4af37",
+    "gold_dim": "#8b6914",
+    "amber_fire": "#e07c1e",
+    "fire_red": "#b91c1c",
+    "cream_ivory": "#f0ddb0",
+    "aged_parchment": "#a08040"
+  },
+
+  "composition_notes": {
+    "foreground": "Slightly darker, slight blur — UI will overlay here",
+    "midground": "Dragon body and Celtic stone carvings, medium detail",
+    "background": "Deep shadow with subtle ambient glow, dragon silhouette",
+    "center": "Relatively open, dark — the spinning wheel UI goes here",
+    "corners": "Ornate Celtic knotwork border decorations, gold leaf detail",
+    "aspect_ratio": "16:9 landscape",
+    "safe_zone": "Keep horizontal center 40% of width relatively uncluttered"
+  },
+
+  "dragon_details": {
+    "style": "Celtic knotwork interlace body markings identical to Dragon Lore skin, golden engraved scales, serpentine shape, NOT western fire-breathing generic dragon",
+    "position": "Coiled along top and left edge of frame, head pointing inward and slightly downward, exhaling visible warm amber breath cloud",
+    "body_colors": "Cream-gold body (#f0ddb0 → #c8960a gradient) with deep red-orange fire area (#dc5f00 → #7c2d12) near head",
+    "detail_level": "Extreme — every scale individually engraved with Celtic micro-patterns as in the original AWP skin texture"
+  },
+
+  "texture_layers": [
+    "Stone wall base — rough carved granite, very dark warm tone",
+    "Celtic knotwork relief carvings in stone — slightly raised, catching amber light",
+    "Diamond/lozenge grid overlay at 8% opacity in gold — matches Dragon Lore checkerboard motif",
+    "Gold leaf illumination on border elements — high specularity",
+    "Volumetric dust/smoke in amber/gold tones — 3-4% density",
+    "Grain/noise overlay for aged parchment feel — subtle film grain"
+  ]
+}
