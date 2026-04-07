@@ -15,6 +15,7 @@ export function AdminDrawModal({
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [drawUrl, setDrawUrl] = useState<string | null>(null);
+  const [concursoInfo, setConcursoInfo] = useState<{ nextConcurso: number; drawAt: string } | null>(null);
   const [isPending, startTransition] = useTransition();
 
   const handleOpen = () => {
@@ -22,6 +23,9 @@ export function AdminDrawModal({
       const res = await openDrawSessionAction(raffleId);
       if (res.success && res.drawUrl) {
         setDrawUrl(res.drawUrl);
+        if (res.nextConcurso && res.drawAt) {
+          setConcursoInfo({ nextConcurso: res.nextConcurso, drawAt: res.drawAt });
+        }
       } else {
         toast.error(res.error || 'Erro ao abrir sala.');
       }
@@ -41,6 +45,7 @@ export function AdminDrawModal({
   const handleClose = () => {
     setIsOpen(false);
     setDrawUrl(null);
+    setConcursoInfo(null);
   };
 
   return (
@@ -73,10 +78,10 @@ export function AdminDrawModal({
                 </p>
 
                 <div className="bg-zinc-800/50 rounded-lg p-4 mb-4 text-sm text-zinc-300">
-                  Uma sala pública será criada vinculada ao próximo concurso da Loteria
-                  Federal. O sorteio acontece automaticamente quando o resultado for
-                  publicado. Compartilhe o link no grupo do WhatsApp para que os
-                  participantes acompanhem ao vivo.
+                  O sorteio será vinculado ao{' '}
+                  <span className="text-yellow-400 font-semibold">próximo concurso da Loteria Federal</span>.
+                  O resultado será obtido automaticamente na data do sorteio oficial. Compartilhe o link
+                  no grupo do WhatsApp para os participantes assistirem ao vivo.
                 </div>
 
                 <Button
@@ -86,7 +91,7 @@ export function AdminDrawModal({
                 >
                   {isPending ? (
                     <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Criando sala...
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Consultando Loteria Federal...
                     </>
                   ) : (
                     <>
@@ -97,6 +102,29 @@ export function AdminDrawModal({
               </>
             ) : (
               <div className="space-y-4">
+                {concursoInfo && (
+                  <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-3 flex items-center gap-3">
+                    <div className="text-yellow-400 text-xl font-black tabular-nums">
+                      #{concursoInfo.nextConcurso}
+                    </div>
+                    <div>
+                      <p className="text-yellow-300 text-xs font-semibold uppercase tracking-wider">
+                        Concurso vinculado
+                      </p>
+                      <p className="text-zinc-400 text-xs">
+                        {new Date(concursoInfo.drawAt).toLocaleString('pt-BR', {
+                          weekday: 'long',
+                          day: '2-digit',
+                          month: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          timeZone: 'America/Sao_Paulo',
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="bg-green-500/10 border border-green-500/20 rounded-xl p-4 text-center">
                   <p className="text-green-400 font-semibold text-sm mb-1">
                     ✓ Sala criada! Compartilhe o link:
@@ -118,7 +146,7 @@ export function AdminDrawModal({
                 </div>
 
                 <p className="text-xs text-zinc-500 text-center">
-                  Você pode fechar esta janela. O sorteio acontecerá automaticamente.
+                  Você pode fechar esta janela. O sorteio acontecerá automaticamente na data do concurso.
                 </p>
 
                 <Button onClick={handleClose} variant="ghost" className="w-full">
