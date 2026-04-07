@@ -395,7 +395,7 @@ export function CountdownPhase({
               {fmt(timeLeft)}
             </div>
             <p className="text-zinc-700 text-xs">{new Date(drawAt).toLocaleString('pt-BR')}</p>
-            {targetConcurso && spinState === 'idle' && (
+            {targetConcurso && ['idle', 'waiting', 'polling'].includes(spinState) && (
               <div className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-800 border border-zinc-700/50 text-xs font-mono">
                 <span className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                 <span className="text-zinc-400">Concurso</span>
