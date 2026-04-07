@@ -13,12 +13,26 @@ export function HeroBanner({ totalWinners, totalValue }: HeroBannerProps) {
 
     return (
         <section className="relative min-h-[85vh] flex items-center overflow-hidden">
-            {/* Radial yellow glow behind Romanov */}
+            {/* Full background image */}
+            <img
+                src="/hero-romanov.png"
+                alt=""
+                aria-hidden="true"
+                className="absolute inset-0 w-full h-full object-cover object-center select-none pointer-events-none"
+                style={{ filter: 'drop-shadow(0 0 60px rgba(245,197,24,0.2))' }}
+            />
+
+            {/* Dark overlay — left side opaque for text, right side reveals image */}
             <div
-                className="absolute right-0 top-0 w-2/3 h-full pointer-events-none"
+                className="absolute inset-0 pointer-events-none"
                 style={{
-                    background: 'radial-gradient(ellipse 60% 80% at 75% 60%, rgba(245,197,24,0.07) 0%, transparent 70%)',
+                    background: 'linear-gradient(to right, #0A0A0B 35%, rgba(10,10,11,0.6) 60%, rgba(10,10,11,0.1) 100%)',
                 }}
+            />
+            {/* Bottom fade */}
+            <div
+                className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
+                style={{ background: 'linear-gradient(to bottom, transparent, #0A0A0B)' }}
             />
 
             <div className="relative z-10 w-full max-w-7xl mx-auto px-6 md:px-10">
@@ -110,22 +124,6 @@ export function HeroBanner({ totalWinners, totalValue }: HeroBannerProps) {
                         </div>
                     </div>
 
-                    {/* Right: Romanov art */}
-                    <div className="relative flex-shrink-0 w-full md:w-auto md:absolute md:right-0 md:bottom-0 md:h-full flex items-end justify-center md:justify-end pointer-events-none">
-                        {/* Glow behind character */}
-                        <div
-                            className="absolute inset-0"
-                            style={{
-                                background: 'radial-gradient(ellipse 50% 60% at 50% 80%, rgba(245,197,24,0.15) 0%, transparent 70%)',
-                            }}
-                        />
-                        <img
-                            src="/hero-romanov.png"
-                            alt="Agente Romanov"
-                            className="relative z-10 h-[300px] md:h-[80vh] w-auto object-contain object-bottom select-none"
-                            style={{ filter: 'drop-shadow(0 0 40px rgba(245,197,24,0.25))' }}
-                        />
-                    </div>
                 </div>
             </div>
 
