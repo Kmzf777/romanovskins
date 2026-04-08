@@ -758,4 +758,3 @@ export async function getLiveDrawSessions(): Promise<LiveDrawData[]> {
       };
     });
 }
-}
