@@ -1,17 +1,19 @@
-import { getRaffles, getRecentWinners, getPublicStats } from '@/server/raffle-actions';
+import { getRaffles, getRecentWinners, getPublicStats, getLiveDrawSessions } from '@/server/raffle-actions';
 import { HeroBanner } from '@/components/ui/hero-banner';
 import { FeaturedRaffleCard } from '@/components/ui/featured-raffle-card';
 import { TicketCard } from '@/components/ui/ticket-card';
 import { HowItWorksSection } from '@/components/ui/how-it-works-section';
 import { WinnersScrollSection } from '@/components/ui/winners-scroll-section';
+import { LiveDrawBanner } from '@/components/ui/live-draw-banner';
 
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-    const [raffles, recentWinners, stats] = await Promise.all([
+    const [raffles, recentWinners, stats, liveDraws] = await Promise.all([
         getRaffles(),
         getRecentWinners(),
         getPublicStats(),
+        getLiveDrawSessions(),
     ]);
 
     const featuredRaffles = raffles.filter((r: any) => r.featured);
@@ -23,6 +25,9 @@ export default async function Home() {
             <HeroBanner totalWinners={stats.totalWinners} totalValue={stats.totalValue} />
 
             <div className="relative z-10">
+                {/* Live Draw Banner */}
+                <LiveDrawBanner liveDraws={liveDraws} />
+
                 {/* Featured Raffles */}
                 {featuredRaffles.length > 0 && (
                     <section className="max-w-6xl mx-auto px-6 md:px-10 py-20">

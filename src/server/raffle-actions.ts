@@ -678,3 +678,84 @@ export async function openDrawSessionAction(
     drawAt: nextInfo.drawAt.toISOString(),
   };
 }
+
+export interface LiveDrawData {
+  session_id: string;
+  raffle_id: string;
+  draw_at: string;
+  session_status: 'waiting' | 'drawing';
+  title: string;
+  image_url: string;
+  price_per_ticket: number;
+  total_numbers: number;
+  float_value: string | null;
+  wear_condition: string | null;
+  original_price: number | null;
+  available_count: number;
+  sold_count: number;
+}
+
+export async function getLiveDrawSessions(): Promise<LiveDrawData[]> {
+  if (!checkEnv()) return [];
+
+  const supabase = await createClient();
+
+  const { data: sessions, error } = await supabase
+    .from('draw_sessions')
+    .select('id, raffle_id, draw_at, status')
+    .in('status', ['waiting', 'drawing']);
+
+  if (error || !sessions || sessions.length === 0) {
+    if (error) console.error('Error fetching live draw sessions:', error);
+    return [];
+  }
+
+  const raffleIds = sessions.map(s => s.raffle_id);
+
+  const { data: raffles, error: raffleError } = await supabase
+    .from('raffles')
+    .select('id, title, image_url, price_per_ticket, total_numbers, float_value, wear_condition, original_price')
+    .in('id', raffleIds);
+
+  if (raffleError || !raffles) {
+    console.error('Error fetching raffles for live sessions:', raffleError);
+    return [];
+  }
+
+  const { data: counts } = await supabase.rpc('get_raffle_ticket_counts', {
+    raffle_ids: raffleIds,
+  });
+
+  const countMap: Record<string, { available_count: number; sold_count: number }> = {};
+  (counts || []).forEach((c: any) => {
+    countMap[c.raffle_id] = {
+      available_count: Number(c.available_count),
+      sold_count: Number(c.sold_count),
+    };
+  });
+
+  const raffleMap: Record<string, any> = {};
+  raffles.forEach(r => { raffleMap[r.id] = r; });
+
+  return sessions
+    .filter(s => raffleMap[s.raffle_id])
+    .map(s => {
+      const r = raffleMap[s.raffle_id];
+      return {
+        session_id: s.id,
+        raffle_id: s.raffle_id,
+        draw_at: s.draw_at,
+        session_status: s.status as 'waiting' | 'drawing',
+        title: r.title,
+        image_url: r.image_url,
+        price_per_ticket: r.price_per_ticket,
+        total_numbers: r.total_numbers,
+        float_value: r.float_value,
+        wear_condition: r.wear_condition,
+        original_price: r.original_price,
+        available_count: countMap[r.id]?.available_count ?? r.total_numbers,
+        sold_count: countMap[r.id]?.sold_count ?? 0,
+      };
+    });
+}
+}
