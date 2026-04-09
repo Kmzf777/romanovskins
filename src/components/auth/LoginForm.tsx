@@ -4,41 +4,78 @@ import { loginAction } from '@/server/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Mail, Phone, User } from 'lucide-react';
 
-const initialState = {
-    error: '',
-};
+const initialState = { error: '' };
 
-export function LoginForm() {
-    const [state, formAction, isPending] = useActionState(loginAction, initialState);
+export function LoginForm({ redirectTo }: { redirectTo?: string }) {
+  const [state, formAction, isPending] = useActionState(loginAction, initialState);
 
-    return (
-        <Card className="w-full max-w-sm mx-auto mt-10">
-            <CardHeader>
-                <CardTitle>Entrar</CardTitle>
-                <CardDescription>Informe seu celular e nome para continuar.</CardDescription>
-            </CardHeader>
-            <form action={formAction}>
-                <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="name">Nome Completo</Label>
-                        <Input id="name" name="name" placeholder="Seu nome" required disabled={isPending} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="whatsapp">WhatsApp (com DDD)</Label>
-                        <Input id="whatsapp" name="whatsapp" type="tel" placeholder="11999999999" required disabled={isPending} />
-                    </div>
-                    {state?.error && (
-                        <p className="text-sm text-red-500 font-medium">{state.error}</p>
-                    )}
-                </CardContent>
-                <CardFooter>
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                        {isPending ? 'Entrando...' : 'Continuar'}
-                    </Button>
-                </CardFooter>
-            </form>
-        </Card>
-    );
+  return (
+    <form action={formAction} className="space-y-5">
+      <input type="hidden" name="redirectTo" value={redirectTo || '/'} />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="name" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <User size={14} className="inline mr-1.5" />Nome Completo
+        </Label>
+        <Input
+          id="name"
+          name="name"
+          placeholder="Seu nome completo"
+          required
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="email" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <Mail size={14} className="inline mr-1.5" />Email
+        </Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          placeholder="seu@email.com"
+          required
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="whatsapp" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <Phone size={14} className="inline mr-1.5" />WhatsApp (com DDD)
+        </Label>
+        <Input
+          id="whatsapp"
+          name="whatsapp"
+          type="tel"
+          placeholder="11999999999"
+          required
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
+
+      {state?.error && (
+        <p className="text-sm font-medium px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
+          {state.error}
+        </p>
+      )}
+
+      <Button
+        type="submit"
+        disabled={isPending}
+        className="w-full h-12 text-base font-black uppercase tracking-wider rounded-xl transition-all"
+        style={{
+          backgroundColor: isPending ? '#2A2A32' : '#F5C518',
+          color: isPending ? '#7A7A8A' : '#0A0A0B',
+        }}
+      >
+        {isPending ? 'Enviando código...' : 'Receber Código'}
+      </Button>
+    </form>
+  );
 }
