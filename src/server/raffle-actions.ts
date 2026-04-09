@@ -346,7 +346,7 @@ export async function getAdminStats() {
         supabase.from('raffles').select('id, status'),
         supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
         supabase.from('transactions').select('amount').eq('status', 'paid'),
-        supabase.from('users').select('id', { count: 'exact', head: true }),
+        supabase.from('profiles').select('id', { count: 'exact', head: true }),
     ]);
 
     const totalRevenue = (revenueRes.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -454,10 +454,10 @@ export async function getRecentWinners() {
 }
 
 export async function performDrawAction(raffleId: string, manualPrimeiroPremio?: string) {
-    const cookieStore = await cookies();
-    const adminSession = cookieStore.get('admin_session')?.value;
+    const { getCurrentUser } = await import('@/server/auth-actions');
+    const currentUser = await getCurrentUser();
 
-    if (!adminSession) {
+    if (!currentUser || currentUser.whatsapp !== process.env.ADMIN_WHATSAPP) {
         return { success: false, error: 'Não autorizado.' };
     }
 
@@ -540,7 +540,7 @@ export async function performDrawAction(raffleId: string, manualPrimeiroPremio?:
 
     // Buscar nome do ganhador para exibir no modal
     const { data: winner } = await supabase
-        .from('users')
+        .from('profiles')
         .select('name, whatsapp')
         .eq('id', winnerTicket.user_id)
         .single();
@@ -616,9 +616,9 @@ export async function getAllWinners(page = 1, perPage = 12) {
 export async function openDrawSessionAction(
   raffleId: string
 ): Promise<{ success: boolean; drawUrl?: string; nextConcurso?: number; drawAt?: string; error?: string }> {
-  const cookieStore = await cookies();
-  const adminSession = cookieStore.get('admin_session')?.value;
-  if (!adminSession) return { success: false, error: 'Não autorizado.' };
+  const { getCurrentUser } = await import('@/server/auth-actions');
+  const currentUser = await getCurrentUser();
+  if (!currentUser || currentUser.whatsapp !== process.env.ADMIN_WHATSAPP) return { success: false, error: 'Não autorizado.' };
 
   const supabase = createAdminClient();
 

@@ -4,9 +4,18 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
 function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-  if (!signature || !secret || secret === 'whsec_...') {
-    console.warn('⚠️ Webhook signature verification skipped - configure ABACATEPAY_WEBHOOK_SECRET');
-    return true;
+  if (!secret || secret === 'whsec_...') {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('⚠️ Webhook signature verification skipped in development - configure ABACATEPAY_WEBHOOK_SECRET');
+      return true;
+    }
+    console.error('❌ ABACATEPAY_WEBHOOK_SECRET not configured in production — rejecting webhook');
+    return false;
+  }
+
+  if (!signature) {
+    console.error('❌ Webhook received without signature');
+    return false;
   }
 
   const expectedSignature = crypto
@@ -52,14 +61,21 @@ async function confirmPayment(supabase: ReturnType<typeof createAdminClient>, bi
 
   console.log('✅ Found transaction:', transaction.id, '| tickets:', transaction.ticket_numbers);
 
-  const { error: updateTxError } = await supabase
+  const { count: updatedCount, error: updateTxError } = await supabase
     .from('transactions')
     .update({ status: 'paid' })
-    .eq('id', transaction.id);
+    .eq('id', transaction.id)
+    .eq('status', 'pending')
+    .select('id', { count: 'exact', head: true });
 
   if (updateTxError) {
     console.error('❌ Error updating transaction:', updateTxError);
     return { error: 'Failed to update transaction' };
+  }
+
+  if (!updatedCount || updatedCount === 0) {
+    console.log('ℹ️ Transaction already paid by concurrent request, skipping tickets update:', transaction.id);
+    return { ok: true };
   }
 
   const { data: updatedTickets, error: updateTicketsError } = await supabase

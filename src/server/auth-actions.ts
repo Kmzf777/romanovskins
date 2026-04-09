@@ -79,12 +79,25 @@ export async function verifyOtpAction(prevState: any, formData: FormData) {
 
   // Upsert profile (create or update name/whatsapp)
   const { data: { user } } = await supabase.auth.getUser();
-  if (user && name && whatsapp) {
-    await supabase.from('profiles').upsert({
-      id: user.id,
-      name,
-      whatsapp,
-    });
+  if (!user) {
+    return { error: 'Sessão inválida. Tente novamente.' };
+  }
+
+  if (!name || !whatsapp) {
+    return { error: 'Dados incompletos. Volte e preencha todos os campos.' };
+  }
+
+  const normalizedWhatsApp = whatsapp.replace(/\D/g, '');
+
+  const { error: upsertError } = await supabase.from('profiles').upsert({
+    id: user.id,
+    name,
+    whatsapp: normalizedWhatsApp,
+  });
+
+  if (upsertError) {
+    console.error('Profile upsert error:', upsertError);
+    return { error: 'Erro ao salvar perfil. Tente novamente.' };
   }
 
   redirect(next);
