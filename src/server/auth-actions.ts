@@ -24,7 +24,7 @@ export async function loginAction(prevState: any, formData: FormData) {
 
   const valid = loginSchema.safeParse({ name, email, whatsapp });
   if (!valid.success) {
-    return { error: valid.error.errors[0].message };
+    return { error: valid.error.issues[0]?.message ?? 'Dados inválidos' };
   }
 
   const supabase = await createClient();

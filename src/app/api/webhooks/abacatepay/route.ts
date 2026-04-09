@@ -61,19 +61,19 @@ async function confirmPayment(supabase: ReturnType<typeof createAdminClient>, bi
 
   console.log('✅ Found transaction:', transaction.id, '| tickets:', transaction.ticket_numbers);
 
-  const { count: updatedCount, error: updateTxError } = await supabase
+  const { data: updatedRows, error: updateTxError } = await supabase
     .from('transactions')
     .update({ status: 'paid' })
     .eq('id', transaction.id)
     .eq('status', 'pending')
-    .select('id', { count: 'exact', head: true });
+    .select('id');
 
   if (updateTxError) {
     console.error('❌ Error updating transaction:', updateTxError);
     return { error: 'Failed to update transaction' };
   }
 
-  if (!updatedCount || updatedCount === 0) {
+  if (!updatedRows || updatedRows.length === 0) {
     console.log('ℹ️ Transaction already paid by concurrent request, skipping tickets update:', transaction.id);
     return { ok: true };
   }

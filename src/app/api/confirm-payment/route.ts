@@ -45,14 +45,14 @@ export async function GET(request: Request) {
     console.log('📥 AbacatePay billing status for', transaction.external_id, ':', billingStatus);
 
     if (billingStatus.toUpperCase() === 'PAID' || billingStatus === 'paid') {
-      const { count: updatedCount } = await supabase
+      const { data: updatedRows } = await supabase
         .from('transactions')
         .update({ status: 'paid' })
         .eq('id', transaction.id)
         .eq('status', 'pending')
-        .select('id', { count: 'exact', head: true });
+        .select('id');
 
-      if (!updatedCount || updatedCount === 0) {
+      if (!updatedRows || updatedRows.length === 0) {
         // Another request already confirmed payment — just return paid
         return NextResponse.json({ status: 'paid' });
       }
