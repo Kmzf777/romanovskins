@@ -66,13 +66,13 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                             Meus Tickets
                         </Link>
                         <span className="text-sm" style={{ color: '#7A7A8A' }}>
-                            Olá, <strong style={{ color: '#F0EAD6' }}>{user.whatsapp}</strong>
+                            Olá, <strong style={{ color: '#F0EAD6' }}>{user.name}</strong>
                         </span>
                     </>
                 ) : (
                     <>
                         <Link
-                            href="/register"
+                            href="/login"
                             className="px-4 py-2 text-sm font-bold rounded-lg transition-all hover:bg-white/5"
                             style={{ color: '#F0EAD6', border: '1px solid #2A2A32' }}
                         >
@@ -132,7 +132,7 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                         ) : (
                             <>
                                 <Link
-                                    href="/register"
+                                    href="/login"
                                     className="w-full py-3 text-center font-bold rounded-lg"
                                     style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
                                     onClick={() => setIsMenuOpen(false)}
