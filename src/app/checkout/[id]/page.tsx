@@ -1,38 +1,34 @@
 import { getRaffleDetails } from '@/server/raffle-actions';
-import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/server/auth-actions';
 import { redirect } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
 import { CheckoutSummary } from '@/components/checkout/CheckoutSummary';
 
 export default async function CheckoutPage({ params }: { params: Promise<{ id: string }> }) {
-    const { id } = await params;
-    const raffle = await getRaffleDetails(id);
+  const { id } = await params;
+  const raffle = await getRaffleDetails(id);
+  if (!raffle) redirect('/');
 
-    if (!raffle) redirect('/');
+  const user = await getCurrentUser();
+  if (!user) redirect(`/login?next=/checkout/${id}`);
 
-    const supabase = await createClient();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
+  const supabase = await createClient();
+  const { data: tickets } = await supabase
+    .from('tickets')
+    .select('*')
+    .eq('raffle_id', id)
+    .eq('user_id', user.id)
+    .eq('status', 'reserved');
 
-    if (!userId) redirect('/login');
+  if (!tickets || tickets.length === 0) {
+    redirect(`/rifa/${id}`);
+  }
 
-    const { data: tickets } = await supabase
-        .from('tickets')
-        .select('*')
-        .eq('raffle_id', id)
-        .eq('user_id', userId)
-        .eq('status', 'reserved');
+  const expiresAt = tickets[0].expires_at ?? new Date(Date.now() + 20 * 60 * 1000).toISOString();
 
-    if (!tickets || tickets.length === 0) {
-        redirect(`/rifa/${id}`);
-    }
-
-    // Pegar expires_at do primeiro ticket (todos têm o mesmo)
-    const expiresAt = tickets[0].expires_at ?? new Date(Date.now() + 20 * 60 * 1000).toISOString();
-
-    return (
-        <div className="container mx-auto p-4 min-h-screen relative z-10">
-            <CheckoutSummary raffle={raffle} tickets={tickets} expiresAt={expiresAt} />
-        </div>
-    );
+  return (
+    <div className="container mx-auto p-4 min-h-screen relative z-10">
+      <CheckoutSummary raffle={raffle} tickets={tickets} expiresAt={expiresAt} />
+    </div>
+  );
 }

@@ -2,20 +2,15 @@
 
 import { abacatePay } from '@/lib/abacatepay';
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
 import crypto from 'crypto';
 
 export async function createCheckoutAction(raffleId: string) {
     const supabase = await createClient();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
-
-    if (!userId) {
-        return { error: 'Usuário não autenticado' };
-    }
-
-    const { data: user } = await supabase.from('users').select('*').eq('id', userId).single();
-    if (!user) return { error: 'Usuário não encontrado' };
+    const { getCurrentUser } = await import('@/server/auth-actions');
+    const currentUser = await getCurrentUser();
+    if (!currentUser) return { error: 'Usuário não autenticado' };
+    const userId = currentUser.id;
+    const user = currentUser;
 
     const { data: tickets } = await supabase
         .from('tickets')

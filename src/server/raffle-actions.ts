@@ -266,12 +266,12 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
     }
 
     const supabase = createAdminClient();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
-
-    if (!userId) {
+    const { getCurrentUser } = await import('@/server/auth-actions');
+    const currentUser = await getCurrentUser();
+    if (!currentUser) {
         return { success: false, error: 'Usuário não autenticado' };
     }
+    const userId = currentUser.id;
 
     const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString(); // +20 min
 

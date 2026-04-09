@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { cookies } from 'next/headers';
+import { getCurrentUser } from '@/server/auth-actions';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import { Trophy, Ticket } from 'lucide-react';
@@ -7,9 +7,9 @@ import { Trophy, Ticket } from 'lucide-react';
 export const dynamic = 'force-dynamic';
 
 export default async function MeusTicketsPage() {
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
-    if (!userId) redirect('/login?next=/meus-tickets');
+    const user = await getCurrentUser();
+    if (!user) redirect('/login?next=/meus-tickets');
+    const userId = user.id;
 
     const supabase = await createClient();
     const { data: transactions } = await supabase
