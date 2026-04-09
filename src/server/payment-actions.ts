@@ -69,15 +69,32 @@ export async function createCheckoutAction(raffleId: string) {
 
         const response = await abacatePay.post('/billing/create', payload);
 
-        console.log('📥 AbacatePay response:', JSON.stringify(response.data, null, 2));
+        console.log('📥 AbacatePay full response:', JSON.stringify(response.data, null, 2));
 
-        const billingData = response.data.data || response.data;
-        const billingId = billingData.id || billingData.billing?.id;
-        const billingUrl = billingData.url || billingData.billing?.url || billingData.payment_url;
+        const billingData = response.data?.data ?? response.data;
+
+        // Try all known field paths for billing ID
+        const billingId: string | undefined =
+          billingData?.id ??
+          billingData?.billing?.id ??
+          billingData?.billingId ??
+          response.data?.id;
+
+        // Try all known field paths for payment URL
+        const billingUrl: string | undefined =
+          billingData?.url ??
+          billingData?.billing?.url ??
+          billingData?.payment_url ??
+          billingData?.checkoutUrl;
+
+        if (!billingId) {
+          console.error('❌ Could not extract billingId from response:', JSON.stringify(response.data, null, 2));
+          return { error: 'Erro ao processar resposta do pagamento. Contate o suporte.' };
+        }
 
         if (!billingUrl) {
-            console.error('❌ No billing URL in response:', response.data);
-            return { error: 'Erro ao obter link de pagamento. Tente novamente.' };
+          console.error('❌ No billing URL in response:', JSON.stringify(response.data, null, 2));
+          return { error: 'Erro ao obter link de pagamento. Tente novamente.' };
         }
 
         // Salvar transação com o ID pré-gerado
@@ -85,7 +102,7 @@ export async function createCheckoutAction(raffleId: string) {
             id: transactionId,
             user_id: userId,
             raffle_id: raffleId,
-            external_id: billingId || 'unknown',
+            external_id: billingId,
             amount: totalAmount,
             status: 'pending',
             ticket_numbers: tickets.map(t => t.ticket_number)
