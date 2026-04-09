@@ -3,84 +3,127 @@ import { headers } from 'next/headers';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 
-// Verifica assinatura HMAC do webhook
 function verifyWebhookSignature(payload: string, signature: string | null, secret: string): boolean {
-    if (!signature || !secret || secret === 'whsec_...') {
-        // Se não tiver secret configurado, aceita em dev (não recomendado em prod)
-        console.warn('⚠️ Webhook signature verification skipped - configure ABACATEPAY_WEBHOOK_SECRET');
-        return true;
-    }
+  if (!signature || !secret || secret === 'whsec_...') {
+    console.warn('⚠️ Webhook signature verification skipped - configure ABACATEPAY_WEBHOOK_SECRET');
+    return true;
+  }
 
-    const expectedSignature = crypto
-        .createHmac('sha256', secret)
-        .update(payload)
-        .digest('hex');
+  const expectedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
 
-    return crypto.timingSafeEqual(
-        Buffer.from(signature),
-        Buffer.from(expectedSignature)
-    );
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(expectedSignature)
+  );
+}
+
+async function confirmPayment(supabase: ReturnType<typeof createAdminClient>, billingId: string) {
+  console.log('🔍 Looking up transaction for billingId:', billingId);
+
+  const { data: transaction, error: txError } = await supabase
+    .from('transactions')
+    .select('*')
+    .eq('external_id', billingId)
+    .maybeSingle();
+
+  if (txError) {
+    console.error('❌ Transaction lookup error:', txError);
+    return { error: 'Transaction lookup error' };
+  }
+
+  if (!transaction) {
+    console.error('❌ No transaction found with external_id:', billingId);
+    const { data: recent } = await supabase
+      .from('transactions')
+      .select('id, external_id, status, created_at')
+      .order('created_at', { ascending: false })
+      .limit(5);
+    console.log('📋 Recent transactions:', JSON.stringify(recent, null, 2));
+    return { error: 'Transaction not found' };
+  }
+
+  if (transaction.status === 'paid') {
+    console.log('ℹ️ Transaction already paid, skipping:', transaction.id);
+    return { ok: true };
+  }
+
+  console.log('✅ Found transaction:', transaction.id, '| tickets:', transaction.ticket_numbers);
+
+  const { error: updateTxError } = await supabase
+    .from('transactions')
+    .update({ status: 'paid' })
+    .eq('id', transaction.id);
+
+  if (updateTxError) {
+    console.error('❌ Error updating transaction:', updateTxError);
+    return { error: 'Failed to update transaction' };
+  }
+
+  const { data: updatedTickets, error: updateTicketsError } = await supabase
+    .from('tickets')
+    .update({ status: 'sold', expires_at: null })
+    .eq('raffle_id', transaction.raffle_id)
+    .in('ticket_number', transaction.ticket_numbers)
+    .select('ticket_number, status');
+
+  if (updateTicketsError) {
+    console.error('❌ Error updating tickets:', updateTicketsError);
+    return { error: 'Failed to update tickets' };
+  }
+
+  console.log('✅ Updated tickets to sold:', updatedTickets?.map((t: any) => t.ticket_number));
+  return { ok: true };
 }
 
 export async function POST(request: Request) {
-    const rawBody = await request.text();
-    const headerPayload = await headers();
-    const signature = headerPayload.get('x-webhook-signature') || headerPayload.get('abacatepay-signature');
+  const rawBody = await request.text();
+  const headerPayload = await headers();
+  const signature = headerPayload.get('x-webhook-signature') || headerPayload.get('abacatepay-signature');
 
-    // Verificar assinatura do webhook
-    const webhookSecret = process.env.ABACATEPAY_WEBHOOK_SECRET || '';
-    if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
-        console.error('❌ Invalid webhook signature');
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  const webhookSecret = process.env.ABACATEPAY_WEBHOOK_SECRET || '';
+  if (!verifyWebhookSignature(rawBody, signature, webhookSecret)) {
+    console.error('❌ Invalid webhook signature');
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
+  }
+
+  let body: any;
+  try {
+    body = JSON.parse(rawBody);
+  } catch (e) {
+    console.error('❌ Failed to parse webhook body:', e);
+    return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+  }
+
+  const event = body.event;
+  console.log('📥 Webhook event:', event);
+  console.log('📥 Webhook body:', JSON.stringify(body, null, 2));
+
+  if (event === 'billing.paid' || event === 'BILLING_PAID') {
+    const data = body.data ?? body;
+    const billingId: string =
+      data?.id ??
+      data?.billing?.id ??
+      data?.billingId ??
+      body?.id;
+
+    if (!billingId) {
+      console.error('❌ Could not extract billingId from webhook body:', JSON.stringify(body, null, 2));
+      return NextResponse.json({ error: 'Missing billing ID' }, { status: 400 });
     }
 
-    const body = JSON.parse(rawBody);
-    const event = body.event;
+    const supabase = createAdminClient();
+    const result = await confirmPayment(supabase, billingId);
 
-    console.log('📥 Webhook received:', event, body);
-
-    if (event === 'billing.paid') {
-        const data = body.data;
-        const billingId = data.id;
-
-        // Usar cliente admin para bypassar RLS
-        const supabase = createAdminClient();
-
-        // 1. Buscar transação pelo external_id
-        const { data: transaction, error: txError } = await supabase
-            .from('transactions')
-            .select('*')
-            .eq('external_id', billingId)
-            .single();
-
-        if (txError || !transaction) {
-            console.error('❌ Transaction not found:', billingId, txError);
-            return NextResponse.json({ error: 'Transaction not found' }, { status: 404 });
-        }
-
-        // 2. Atualizar status da transação para 'paid'
-        const { error: updateTxError } = await supabase
-            .from('transactions')
-            .update({ status: 'paid' })
-            .eq('id', transaction.id);
-
-        if (updateTxError) {
-            console.error('❌ Error updating transaction:', updateTxError);
-        }
-
-        // 3. Atualizar todos os tickets para 'sold' e remover expiração
-        const { error: updateTicketsError } = await supabase
-            .from('tickets')
-            .update({ status: 'sold', expires_at: null })
-            .eq('raffle_id', transaction.raffle_id)
-            .in('ticket_number', transaction.ticket_numbers);
-
-        if (updateTicketsError) {
-            console.error('❌ Error updating tickets:', updateTicketsError);
-        }
-
-        console.log('✅ Payment confirmed for transaction:', transaction.id);
+    if (result.error) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: result.error === 'Transaction not found' ? 404 : 500 }
+      );
     }
+  }
 
-    return NextResponse.json({ received: true });
+  return NextResponse.json({ received: true });
 }
