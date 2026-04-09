@@ -21,7 +21,6 @@ interface Raffle {
 interface ProofPhaseProps {
   raffle: Raffle;
   session: DrawSession;
-  onBack?: () => void;
 }
 
 function maskName(name: string): string {
@@ -34,7 +33,7 @@ function maskName(name: string): string {
     .join(' ');
 }
 
-export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
+export function ProofPhase({ raffle, session }: ProofPhaseProps) {
   const {
     winner_ticket_number,
     winner_name,
@@ -68,9 +67,7 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Barlow+Condensed:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap');
-
-        .dl-proof-root { font-family: 'Barlow Condensed', sans-serif; }
+        .dl-proof-root { font-family: var(--font-space-grotesk), sans-serif; }
 
         @keyframes dl-proof-in {
           from { opacity: 0; transform: translateY(24px) scale(0.97); }
@@ -115,39 +112,16 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
                 style={{ animation: 'dl-grain-shift 8s steps(4) infinite' }}/>
         </svg>
 
-        {/* Celtic diamond background */}
+        {/* Radial gold glow + bottom fade */}
         <div className="absolute inset-0 pointer-events-none select-none" style={{ zIndex: 1 }}>
-          <svg className="absolute inset-0 w-full h-full">
-            <defs>
-              <pattern id="dlp-diamond" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
-                <path d="M24 2 L46 24 L24 46 L2 24 Z" fill="none" stroke="#c8960a" strokeWidth="0.7" opacity="0.07"/>
-                <path d="M24 12 L36 24 L24 36 L12 24 Z" fill="none" stroke="#c8960a" strokeWidth="0.35" opacity="0.04"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dlp-diamond)"/>
-          </svg>
-
-          {/* Radial gold glow from top */}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'radial-gradient(ellipse 80% 50% at 50% 10%, rgba(200,150,10,0.14) 0%, transparent 60%)',
           }}/>
-
-          {/* Bottom fade */}
           <div style={{
             position: 'absolute', inset: 0,
             background: 'linear-gradient(to top, #090704 0%, transparent 40%)',
           }}/>
-
-          {/* Corner ornaments */}
-          <svg className="absolute top-0 left-0" width="70" height="70" viewBox="0 0 70 70">
-            <path d="M0 0 L70 0 L70 5 L5 5 L5 70 L0 70 Z" fill="#c8960a" opacity="0.06"/>
-            <circle cx="20" cy="20" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
-          <svg className="absolute top-0 right-0" width="70" height="70" viewBox="0 0 70 70">
-            <path d="M70 0 L0 0 L0 5 L65 5 L65 70 L70 70 Z" fill="#c8960a" opacity="0.06"/>
-            <circle cx="50" cy="20" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
         </div>
 
         {/* Main content */}
@@ -181,16 +155,15 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
 
             <div>
               <h1 style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 900,
-                fontSize: 24,
+                fontFamily: "var(--font-bebas-neue), sans-serif",
+                fontSize: 32,
                 color: '#f0ddb0',
-                letterSpacing: '0.04em',
-                lineHeight: 1.2,
+                letterSpacing: '0.08em',
+                lineHeight: 1.1,
               }}>
                 Sorteio Encerrado
               </h1>
-              <p style={{ fontSize: 12, color: '#3d2f15', marginTop: 4, fontFamily: "'Cinzel', serif" }}>
+              <p style={{ fontSize: 14, color: 'rgba(200,150,10,0.55)', marginTop: 4, fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                 {raffle.title}
               </p>
             </div>
@@ -225,9 +198,9 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
             ))}
 
             <p style={{
-              fontSize: 9,
-              color: 'rgba(200,150,10,0.4)',
-              fontFamily: "'Cinzel', serif",
+              fontSize: 13,
+              color: 'rgba(200,150,10,0.75)',
+              fontFamily: "var(--font-space-grotesk), sans-serif",
               fontWeight: 600,
               letterSpacing: '0.35em',
               textTransform: 'uppercase',
@@ -236,12 +209,11 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
             </p>
 
             <div style={{
-              fontFamily: "'Cinzel', serif",
-              fontWeight: 900,
-              fontSize: 'clamp(72px, 18vw, 88px)',
+              fontFamily: "var(--font-bebas-neue), sans-serif",
+              fontSize: 'clamp(72px, 18vw, 96px)',
               lineHeight: 1,
               color: '#d4af37',
-              letterSpacing: '0.04em',
+              letterSpacing: '0.06em',
               animation: 'dl-number-glow 2.5s ease-in-out infinite',
             }}>
               #{winner_ticket_number}
@@ -261,7 +233,7 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
               fontSize: 14,
               fontWeight: 700,
               color: '#a08040',
-              fontFamily: "'Cinzel', serif",
+              fontFamily: "var(--font-space-grotesk), sans-serif",
               letterSpacing: '0.04em',
             }}>
               {maskedName}
@@ -288,27 +260,27 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
             }}>
               <ShieldCheck style={{ width: 14, height: 14, color: '#c8960a', opacity: 0.8 }}/>
               <span style={{
-                fontSize: 11,
-                fontFamily: "'Cinzel', serif",
+                fontSize: 13,
+                fontFamily: "var(--font-space-grotesk), sans-serif",
                 fontWeight: 600,
-                color: 'rgba(240,221,176,0.6)',
+                color: 'rgba(240,221,176,0.8)',
                 letterSpacing: '0.05em',
               }}>
                 Comprovante de Transparência
               </span>
             </div>
 
-            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {concurso && concurso > 0 && (
                 <div className="flex justify-between items-center">
-                  <span style={{ fontSize: 11, color: '#3d2f15', fontFamily: "'Cinzel', serif" }}>
+                  <span style={{ fontSize: 13, color: 'rgba(200,150,10,0.65)', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                     Concurso Federal
                   </span>
                   <span style={{
-                    fontSize: 12,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 14,
+                    fontFamily: "var(--font-space-grotesk), sans-serif",
                     fontWeight: 700,
-                    color: '#a08040',
+                    color: '#c8a050',
                   }}>
                     #{concurso}
                   </span>
@@ -317,14 +289,14 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
 
               {primeiro_premio && (
                 <div className="flex justify-between items-center">
-                  <span style={{ fontSize: 11, color: '#3d2f15', fontFamily: "'Cinzel', serif" }}>
+                  <span style={{ fontSize: 13, color: 'rgba(200,150,10,0.65)', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                     1º Prêmio
                   </span>
                   <span style={{
-                    fontSize: 12,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 14,
+                    fontFamily: "var(--font-space-grotesk), sans-serif",
                     fontWeight: 700,
-                    color: '#a08040',
+                    color: '#c8a050',
                   }}>
                     {primeiro_premio}
                   </span>
@@ -333,12 +305,12 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
 
               {lastTwo !== null && (
                 <div className="flex justify-between items-center">
-                  <span style={{ fontSize: 11, color: '#3d2f15', fontFamily: "'Cinzel', serif" }}>
+                  <span style={{ fontSize: 13, color: 'rgba(200,150,10,0.65)', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                     Últimos 2 dígitos
                   </span>
                   <span style={{
-                    fontSize: 13,
-                    fontFamily: "'JetBrains Mono', monospace",
+                    fontSize: 15,
+                    fontFamily: "var(--font-space-grotesk), sans-serif",
                     fontWeight: 700,
                     color: '#d4af37',
                   }}>
@@ -348,38 +320,38 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
               )}
 
               {/* Formula */}
-              <div style={{ borderTop: '1px solid rgba(200,150,10,0.07)', paddingTop: 10 }}>
+              <div style={{ borderTop: '1px solid rgba(200,150,10,0.1)', paddingTop: 12 }}>
                 <p style={{
-                  fontSize: 9,
-                  color: '#2d2415',
-                  fontFamily: "'Cinzel', serif",
+                  fontSize: 12,
+                  color: 'rgba(200,150,10,0.6)',
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   fontWeight: 600,
                   letterSpacing: '0.15em',
                   textTransform: 'uppercase',
-                  marginBottom: 6,
+                  marginBottom: 8,
                 }}>
                   Fórmula aplicada
                 </p>
                 <code style={{
                   display: 'block',
-                  fontSize: 11,
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: 13,
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   background: 'rgba(0,0,0,0.3)',
-                  border: '1px solid rgba(200,150,10,0.06)',
+                  border: '1px solid rgba(200,150,10,0.1)',
                   borderRadius: 8,
-                  padding: '8px 12px',
-                  color: '#5c4a28',
+                  padding: '10px 14px',
+                  color: 'rgba(200,150,10,0.65)',
                 }}>
                   ({lastTwo} % {raffle.total_numbers}) + 1 ={' '}
                   <span style={{ color: '#d4af37', fontWeight: 700 }}>{calculatedWinner}</span>
                   {isFallback && (
-                    <span style={{ color: '#3d2f15', marginLeft: 4 }}>
+                    <span style={{ color: 'rgba(200,150,10,0.45)', marginLeft: 4 }}>
                       → fallback #{winner_ticket_number}*
                     </span>
                   )}
                 </code>
                 {isFallback && (
-                  <p style={{ fontSize: 10, color: '#2d2415', marginTop: 6, lineHeight: 1.5 }}>
+                  <p style={{ fontSize: 12, color: 'rgba(200,150,10,0.5)', marginTop: 8, lineHeight: 1.6 }}>
                     * Número calculado não foi vendido — usado o ticket vendido mais próximo.
                   </p>
                 )}
@@ -391,11 +363,11 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1.5 transition-colors"
-                style={{ fontSize: 10, color: 'rgba(200,150,10,0.35)', fontFamily: "'Cinzel', serif" }}
+                style={{ fontSize: 13, color: 'rgba(200,150,10,0.5)', fontFamily: "var(--font-space-grotesk), sans-serif" }}
                 onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#c8960a')}
-                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(200,150,10,0.35)')}
+                onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(200,150,10,0.5)')}
               >
-                <ExternalLink style={{ width: 11, height: 11 }}/>
+                <ExternalLink style={{ width: 13, height: 13 }}/>
                 Verificar resultado oficial no site da Caixa
               </a>
             </div>
@@ -410,7 +382,7 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
                 padding: '12px 0',
                 background: 'linear-gradient(135deg, #8b6914 0%, #c8960a 50%, #d4af37 100%)',
                 color: '#0e0b05',
-                fontFamily: "'Cinzel', serif",
+                fontFamily: "var(--font-space-grotesk), sans-serif",
                 fontWeight: 700,
                 fontSize: 13,
                 letterSpacing: '0.04em',
@@ -428,58 +400,34 @@ export function ProofPhase({ raffle, session, onBack }: ProofPhaseProps) {
               style={{
                 padding: '12px 16px',
                 background: 'rgba(200,150,10,0.05)',
-                border: '1px solid rgba(200,150,10,0.18)',
-                color: '#5c4a28',
+                border: '1px solid rgba(200,150,10,0.22)',
+                color: 'rgba(200,150,10,0.55)',
               }}
               onMouseEnter={e => {
-                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(200,150,10,0.1)';
+                (e.currentTarget as HTMLButtonElement).style.background = 'rgba(200,150,10,0.12)';
                 (e.currentTarget as HTMLButtonElement).style.color = '#c8960a';
               }}
               onMouseLeave={e => {
                 (e.currentTarget as HTMLButtonElement).style.background = 'rgba(200,150,10,0.05)';
-                (e.currentTarget as HTMLButtonElement).style.color = '#5c4a28';
+                (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,150,10,0.55)';
               }}
             >
               <Copy style={{ width: 15, height: 15 }}/>
             </button>
           </div>
 
-          {/* Back to roulette */}
-          {onBack && (
-            <button
-              onClick={onBack}
-              style={{
-                fontSize: 10,
-                color: '#2d2415',
-                fontFamily: "'Cinzel', serif",
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-                textDecoration: 'underline',
-                textUnderlineOffset: 4,
-                textDecorationColor: 'rgba(200,150,10,0.2)',
-                letterSpacing: '0.06em',
-                transition: 'color 0.2s',
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLButtonElement).style.color = '#c8960a'}
-              onMouseLeave={e => (e.currentTarget as HTMLButtonElement).style.color = '#2d2415'}
-            >
-              ← Voltar à roleta
-            </button>
-          )}
-
           {/* Raffle image */}
-          <div className="flex items-center gap-3" style={{ fontSize: 11, color: '#2d2415' }}>
+          <div className="flex items-center gap-3" style={{ fontSize: 13, color: 'rgba(200,150,10,0.55)' }}>
             <div style={{
               position: 'relative',
-              width: 36, height: 36,
+              width: 40, height: 40,
               borderRadius: 8,
               overflow: 'hidden',
-              border: '1px solid rgba(200,150,10,0.15)',
+              border: '1px solid rgba(200,150,10,0.2)',
             }}>
               <Image src={raffle.image_url} alt={raffle.title} fill className="object-cover" unoptimized/>
             </div>
-            <span style={{ fontFamily: "'Cinzel', serif", color: '#3d2f15' }}>{raffle.title}</span>
+            <span style={{ fontFamily: "var(--font-space-grotesk), sans-serif", color: 'rgba(200,150,10,0.65)' }}>{raffle.title}</span>
           </div>
         </div>
       </div>

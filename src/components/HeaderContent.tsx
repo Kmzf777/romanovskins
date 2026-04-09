@@ -72,7 +72,7 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                 ) : (
                     <>
                         <Link
-                            href="/login"
+                            href="/register"
                             className="px-4 py-2 text-sm font-bold rounded-lg transition-all hover:bg-white/5"
                             style={{ color: '#F0EAD6', border: '1px solid #2A2A32' }}
                         >

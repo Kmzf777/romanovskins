@@ -174,7 +174,8 @@ export async function getLotoFederalByConcurso(concurso: number): Promise<LotoFe
         }
     );
 
-    if (res2.status === 404 || res2.status === 204) {
+    // 404/204 = result not published yet; 503 = Caixa computing results (draw in progress)
+    if (res2.status === 404 || res2.status === 204 || res2.status === 503) {
         throw new Error('CONCURSO_NOT_AVAILABLE');
     }
     if (!res2.ok) {

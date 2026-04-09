@@ -5,6 +5,32 @@ import { createClient } from '@/lib/supabase/client';
 import { CountdownPhase } from './CountdownPhase';
 import { ProofPhase } from './ProofPhase';
 
+// Overlay defined outside component so React doesn't remount it on every render
+function Overlay({ children }: { children: React.ReactNode }) {
+  return (
+    <>
+      <style>{`
+        .dl-overlay {
+          background-color: #090704;
+          background-image: url('/dlore9-16.png');
+          background-size: cover;
+          background-position: center top;
+          background-repeat: no-repeat;
+        }
+        @media (min-width: 640px) {
+          .dl-overlay {
+            background-image: url('/dlore16-9.png');
+            background-position: center center;
+          }
+        }
+      `}</style>
+      <div className="dl-overlay fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden">
+        {children}
+      </div>
+    </>
+  );
+}
+
 type DrawPhase = 'countdown' | 'drawn' | 'no_session';
 
 interface DrawSession {
@@ -41,26 +67,17 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     return 'countdown'; // 'waiting' e 'drawing' ficam no countdown (roleta integrada)
   });
   const [drawError, setDrawError] = useState<string | null>(null);
-  const [rouletteKey, setRouletteKey] = useState(0);
   const drawTriggered = useRef(false);
+  // Keep a ref to session.draw_at so triggerDraw can check it without stale closure
+  const drawAtRef = useRef<string | null>(initialSession?.draw_at ?? null);
+  useEffect(() => { drawAtRef.current = session?.draw_at ?? null; }, [session?.draw_at]);
 
-  // DEBUG: força sorteio imediato ignorando draw_at (remover antes de produção)
-  const triggerDrawForce = useCallback(async () => {
-    drawTriggered.current = true;
-    setDrawError(null);
-    try {
-      const res = await fetch(`/api/sorteio/${raffle.id}/draw?force=true`, { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setDrawError(data.error || 'Erro ao realizar sorteio.');
-        drawTriggered.current = false;
-      }
-    } catch (err) {
-      console.error('Error forcing draw:', err);
-      setDrawError('Erro de conexão.');
-      drawTriggered.current = false;
-    }
-  }, [raffle.id]);
+  // Lock body scroll while overlay is active
+  useEffect(() => {
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   // Dispara o sorteio via API (idempotente — qualquer viewer pode chamar)
   const triggerDraw = useCallback(async () => {
@@ -74,8 +91,12 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
         setDrawError(data.error || 'Erro ao realizar sorteio.');
         drawTriggered.current = false;
       } else if (data.skipped) {
-        // Session not ready yet (draw_at in the future) — allow retry
         drawTriggered.current = false;
+        // If draw_at has already passed (clock skew / timing edge case), retry shortly
+        const drawAtMs = drawAtRef.current ? new Date(drawAtRef.current).getTime() : 0;
+        if (drawAtMs > 0 && drawAtMs <= Date.now()) {
+          setTimeout(() => triggerDraw(), 5000);
+        }
       }
     } catch (err) {
       console.error('Error triggering draw:', err);
@@ -126,32 +147,6 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     };
   }, [raffle.id]);
 
-  // Wrapper único: overlay fixed cobre Header, Footer e background do layout raiz
-  function Overlay({ children }: { children: React.ReactNode }) {
-    return (
-      <>
-        <style>{`
-          .dl-overlay {
-            background-color: #090704;
-            background-image: url('/dlore9-16.png');
-            background-size: cover;
-            background-position: center top;
-            background-repeat: no-repeat;
-          }
-          @media (min-width: 640px) {
-            .dl-overlay {
-              background-image: url('/dlore16-9.png');
-              background-position: center center;
-            }
-          }
-        `}</style>
-        <div className="dl-overlay fixed inset-0 z-[100] overflow-y-auto">
-          {children}
-        </div>
-      </>
-    );
-  }
-
   if (phase === 'no_session') {
     return (
       <Overlay>
@@ -169,7 +164,6 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
     return (
       <Overlay>
         <CountdownPhase
-          key={rouletteKey}
           raffle={raffle}
           drawAt={session.draw_at}
           onCountdownEnd={triggerDraw}
@@ -177,7 +171,6 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
           drawError={drawError}
           winnerNumber={session.winner_ticket_number}
           targetConcurso={session.target_concurso ?? undefined}
-          onForceStart={triggerDrawForce}
         />
       </Overlay>
     );
@@ -189,12 +182,6 @@ export function DrawRoom({ raffle, initialSession }: DrawRoomProps) {
         <ProofPhase
           raffle={raffle}
           session={session!}
-          onBack={() => {
-            setPhase('countdown');
-            setDrawError(null);
-            drawTriggered.current = false;
-            setRouletteKey(k => k + 1); // remonta CountdownPhase com estado zerado
-          }}
         />
       </Overlay>
     );

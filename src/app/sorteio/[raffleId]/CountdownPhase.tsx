@@ -26,8 +26,6 @@ interface CountdownPhaseProps {
   drawError?: string | null;
   winnerNumber?: number | null;
   targetConcurso?: number;
-  /** DEBUG ONLY — remove before production */
-  onForceStart?: () => void;
 }
 
 function fmt(ms: number) {
@@ -40,7 +38,7 @@ const SPIN_DURATION = 5500;
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function CountdownPhase({
-  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber, targetConcurso, onForceStart,
+  raffle, drawAt, onCountdownEnd, onDrawComplete, drawError, winnerNumber, targetConcurso,
 }: CountdownPhaseProps) {
   const N = raffle.total_numbers;
   const SEG = 360 / N;
@@ -113,9 +111,16 @@ export function CountdownPhase({
   }, [drawAt, onCountdownEnd, spinState]);
 
   // ── Kick spin when winner arrives ────────────────────────────────────────────
+  // Also handles 'polling' state: if Realtime delivers the winner while we're
+  // mid-poll-countdown (another viewer triggered the draw), start spinning immediately.
   useEffect(() => {
     if (winnerNumber == null || spinStarted.current) return;
-    if (spinState !== 'waiting') return;
+    if (spinState !== 'waiting' && spinState !== 'polling') return;
+    // Clear any active poll interval before starting spin
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
     spinStarted.current = true;
     setSpinState('spinning');
   }, [winnerNumber, spinState]);
@@ -235,9 +240,7 @@ export function CountdownPhase({
     <>
       {/* ── Injected styles ── */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700;900&family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;1,700&family=JetBrains+Mono:wght@400;700&display=swap');
-
-        .dl-root { font-family: 'Barlow Condensed', sans-serif; }
+        .dl-root { font-family: var(--font-space-grotesk), sans-serif; }
 
         /* Hub number animations */
         @keyframes dl-hub-spin-grow {
@@ -323,33 +326,9 @@ export function CountdownPhase({
           <rect width="100%" height="100%" filter="url(#dl-grain)" opacity="1"/>
         </svg>
 
-        {/* ── Celtic diamond knotwork background ── */}
-        <div className="absolute inset-0 pointer-events-none select-none overflow-hidden" style={{ zIndex: 1 }}>
-          <svg className="absolute inset-0 w-full h-full" xmlns="http://www.w3.org/2000/svg">
-            <defs>
-              <pattern id="dl-diamond" x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
-                {/* Outer diamond */}
-                <path d="M24 2 L46 24 L24 46 L2 24 Z"
-                      fill="none" stroke="#c8960a" strokeWidth="0.7" opacity="0.09"/>
-                {/* Inner diamond */}
-                <path d="M24 10 L38 24 L24 38 L10 24 Z"
-                      fill="none" stroke="#c8960a" strokeWidth="0.4" opacity="0.05"/>
-                {/* Center jewel */}
-                <rect x="22" y="22" width="4" height="4" fill="none" stroke="#d4af37" strokeWidth="0.4" opacity="0.07"
-                      transform="rotate(45 24 24)"/>
-                {/* Cross connectors */}
-                <line x1="24" y1="0" x2="24" y2="2"    stroke="#c8960a" strokeWidth="0.4" opacity="0.06"/>
-                <line x1="24" y1="46" x2="24" y2="48"  stroke="#c8960a" strokeWidth="0.4" opacity="0.06"/>
-                <line x1="0"  y1="24" x2="2"  y2="24"  stroke="#c8960a" strokeWidth="0.4" opacity="0.06"/>
-                <line x1="46" y1="24" x2="48" y2="24"  stroke="#c8960a" strokeWidth="0.4" opacity="0.06"/>
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#dl-diamond)"/>
-          </svg>
-
-          {/* Radial golden glow at wheel position */}
-          <div className="absolute" style={{
-            inset: 0,
+        {/* ── Radial golden glow + bottom fade ── */}
+        <div className="absolute inset-0 pointer-events-none select-none" style={{ zIndex: 1 }}>
+          <div className="absolute inset-0" style={{
             background: isActive
               ? 'radial-gradient(ellipse 72% 58% at 50% 38%, rgba(200,150,10,0.13) 0%, transparent 65%)'
               : isStopped
@@ -358,33 +337,6 @@ export function CountdownPhase({
             transition: 'background 1.2s ease',
             animation: isActive && !isStopped ? 'dl-glow-pulse 3s ease-in-out infinite' : 'none',
           }}/>
-
-          {/* Corner ornaments — top-left */}
-          <svg className="absolute top-0 left-0 pointer-events-none" width="80" height="80" viewBox="0 0 80 80">
-            <path d="M0 0 L80 0 L80 6 L6 6 L6 80 L0 80 Z" fill="#c8960a" opacity="0.07"/>
-            <path d="M0 0 L60 0 L60 3 L3 3 L3 60 L0 60 Z" fill="#c8960a" opacity="0.05"/>
-            <path d="M12 12 L28 12 L28 15 L15 15 L15 28 L12 28 Z" fill="#c8960a" opacity="0.06"/>
-            <circle cx="24" cy="24" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
-          {/* Corner ornament — top-right */}
-          <svg className="absolute top-0 right-0 pointer-events-none" width="80" height="80" viewBox="0 0 80 80">
-            <path d="M80 0 L0 0 L0 6 L74 6 L74 80 L80 80 Z" fill="#c8960a" opacity="0.07"/>
-            <path d="M80 0 L20 0 L20 3 L77 3 L77 60 L80 60 Z" fill="#c8960a" opacity="0.05"/>
-            <path d="M68 12 L52 12 L52 15 L65 15 L65 28 L68 28 Z" fill="#c8960a" opacity="0.06"/>
-            <circle cx="56" cy="24" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
-          {/* Corner ornament — bottom-left */}
-          <svg className="absolute bottom-0 left-0 pointer-events-none" width="80" height="80" viewBox="0 0 80 80">
-            <path d="M0 80 L80 80 L80 74 L6 74 L6 0 L0 0 Z" fill="#c8960a" opacity="0.07"/>
-            <circle cx="24" cy="56" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
-          {/* Corner ornament — bottom-right */}
-          <svg className="absolute bottom-0 right-0 pointer-events-none" width="80" height="80" viewBox="0 0 80 80">
-            <path d="M80 80 L0 80 L0 74 L74 74 L74 0 L80 0 Z" fill="#c8960a" opacity="0.07"/>
-            <circle cx="56" cy="56" r="3" fill="none" stroke="#d4af37" strokeWidth="0.8" opacity="0.1"/>
-          </svg>
-
-          {/* Bottom fade */}
           <div className="absolute inset-x-0 bottom-0 h-40"
                style={{ background: 'linear-gradient(to top, #090704, transparent)' }}/>
         </div>
@@ -414,20 +366,15 @@ export function CountdownPhase({
           }}/>
         )}
 
-        {/* ── Header ── */}
-        <header className="relative flex items-center justify-between px-5 py-3"
-                style={{
-                  zIndex: 10,
-                  borderBottom: '1px solid rgba(200,150,10,0.08)',
-                  background: 'rgba(9,7,4,0.9)',
-                  backdropFilter: 'blur(20px)',
-                }}>
+        {/* ── Floating top bar (transparent, no background) ── */}
+        <div className="relative flex items-center justify-between px-5 pt-4 pb-2"
+             style={{ zIndex: 10 }}>
 
           {/* LIVE badge */}
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full"
                style={{
-                 background: 'rgba(220,79,5,0.08)',
-                 border: '1px solid rgba(220,79,5,0.22)',
+                 background: 'rgba(220,79,5,0.12)',
+                 border: '1px solid rgba(220,79,5,0.3)',
                }}>
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full rounded-full"
@@ -439,45 +386,43 @@ export function CountdownPhase({
               <span className="relative inline-flex h-2 w-2 rounded-full" style={{ background: '#dc4a05' }}/>
             </span>
             <span className="font-bold tracking-[0.18em] uppercase"
-                  style={{ fontSize: 10, color: '#dc4a05', fontFamily: "'Cinzel', serif" }}>
+                  style={{ fontSize: 12, color: '#ff6a2a', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
               AO VIVO
             </span>
           </div>
 
           {/* Brand — centered */}
           <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            {/* Decorative left fleur */}
             <svg width="14" height="10" viewBox="0 0 14 10" fill="none">
-              <path d="M14 5 Q10 0 6 5 Q10 10 14 5Z" fill="#c8960a" opacity="0.3"/>
-              <path d="M8 5 Q5 1 0 5 Q5 9 8 5Z" fill="#c8960a" opacity="0.2"/>
+              <path d="M14 5 Q10 0 6 5 Q10 10 14 5Z" fill="#c8960a" opacity="0.5"/>
+              <path d="M8 5 Q5 1 0 5 Q5 9 8 5Z" fill="#c8960a" opacity="0.35"/>
             </svg>
             <span style={{
-              fontSize: 10,
-              color: 'rgba(200,150,10,0.35)',
-              fontFamily: "'Cinzel', serif",
+              fontSize: 12,
+              color: 'rgba(200,150,10,0.65)',
+              fontFamily: "var(--font-space-grotesk), sans-serif",
               fontWeight: 600,
               letterSpacing: '0.3em',
               textTransform: 'uppercase',
             }}>
               Romanov Rifas
             </span>
-            {/* Decorative right fleur */}
             <svg width="14" height="10" viewBox="0 0 14 10" fill="none" style={{ transform: 'scaleX(-1)' }}>
-              <path d="M14 5 Q10 0 6 5 Q10 10 14 5Z" fill="#c8960a" opacity="0.3"/>
-              <path d="M8 5 Q5 1 0 5 Q5 9 8 5Z" fill="#c8960a" opacity="0.2"/>
+              <path d="M14 5 Q10 0 6 5 Q10 10 14 5Z" fill="#c8960a" opacity="0.5"/>
+              <path d="M8 5 Q5 1 0 5 Q5 9 8 5Z" fill="#c8960a" opacity="0.35"/>
             </svg>
           </div>
 
           {/* Viewers */}
-          <div className="flex items-center gap-1.5" style={{ color: '#2d2415', fontSize: 12 }}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <div className="flex items-center gap-1.5" style={{ color: 'rgba(200,150,10,0.6)', fontSize: 13 }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
               <circle cx="9" cy="7" r="4"/>
               <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
             </svg>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontWeight: 700 }}>{viewers}</span>
+            <span style={{ fontFamily: "var(--font-space-grotesk), sans-serif", fontWeight: 700 }}>{viewers}</span>
           </div>
-        </header>
+        </div>
 
         {/* ── Main content ── */}
         <main className="relative flex-1 flex flex-col items-center justify-center px-4 py-5 gap-4" style={{ zIndex: 10 }}>
@@ -485,14 +430,14 @@ export function CountdownPhase({
           {/* Title */}
           <div className="text-center">
             <h1 className="font-semibold leading-tight" style={{
-              fontSize: 16,
-              color: 'rgba(240,221,176,0.7)',
-              fontFamily: "'Cinzel', serif",
+              fontSize: 20,
+              color: 'rgba(240,221,176,0.9)',
+              fontFamily: "var(--font-space-grotesk), sans-serif",
               letterSpacing: '0.04em',
             }}>
               {raffle.title}
             </h1>
-            <p style={{ fontSize: 11, color: '#2d2415', fontFamily: "'JetBrains Mono', monospace", marginTop: 2 }}>
+            <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.55)', fontFamily: "var(--font-space-grotesk), sans-serif", marginTop: 4 }}>
               {N} cotas · sorteio ao vivo
             </p>
           </div>
@@ -599,7 +544,7 @@ export function CountdownPhase({
                         fontWeight={isWinner ? '700' : '600'}
                         fill={labelColor}
                         style={{
-                          fontFamily: "'Cinzel', serif",
+                          fontFamily: "var(--font-space-grotesk), sans-serif",
                           userSelect: 'none',
                         }}
                       >
@@ -705,24 +650,23 @@ export function CountdownPhase({
                 ...(isStopped ? {
                   transform: 'translate(-50%, -50%)',
                   animation: `dl-hub-reveal 0.95s cubic-bezier(0.22, 1, 0.36, 1) both`,
-                  fontFamily: "'Cinzel', serif",
-                  fontWeight: 900,
+                  fontFamily: "var(--font-bebas-neue), sans-serif",
                   fontSize: winnerFontSize,
                   color: '#f0ddb0',
                   textShadow: '0 0 20px rgba(200,150,10,0.9), 0 0 50px rgba(200,150,10,0.4)',
                   letterSpacing: '0.04em',
                 } : isSpinning ? {
                   animation: `dl-hub-spin-grow ${SPIN_DURATION}ms ease-in both`,
-                  fontFamily: "'JetBrains Mono', monospace",
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   fontWeight: 700,
                   fontSize: 18,
                   color: '#e07c1e',
                 } : {
                   transform: 'translate(-50%, -50%)',
-                  fontFamily: "'Cinzel', serif",
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   fontWeight: 600,
                   fontSize: 20,
-                  color: '#3d2f15',
+                  color: 'rgba(200,150,10,0.45)',
                   animation: 'dl-hub-idle-pulse 3s ease-in-out infinite',
                 }),
               }}
@@ -780,9 +724,9 @@ export function CountdownPhase({
               </div>
 
               <p style={{
-                fontSize: 10,
-                color: 'rgba(200,150,10,0.5)',
-                fontFamily: "'Cinzel', serif",
+                fontSize: 13,
+                color: 'rgba(200,150,10,0.8)',
+                fontFamily: "var(--font-space-grotesk), sans-serif",
                 fontWeight: 600,
                 letterSpacing: '0.35em',
                 textTransform: 'uppercase',
@@ -791,9 +735,8 @@ export function CountdownPhase({
               </p>
 
               <div style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 900,
-                fontSize: 'clamp(52px, 13vw, 76px)',
+                fontFamily: "var(--font-bebas-neue), sans-serif",
+                fontSize: 'clamp(60px, 15vw, 88px)',
                 color: '#d4af37',
                 textShadow: '0 0 40px rgba(200,150,10,0.8), 0 0 80px rgba(200,150,10,0.35)',
                 letterSpacing: '0.06em',
@@ -802,7 +745,7 @@ export function CountdownPhase({
                 #{winnerNumber}
               </div>
 
-              <p style={{ fontSize: 10, color: '#2d2415', letterSpacing: '0.2em', fontFamily: "'Cinzel', serif" }}>
+              <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.55)', letterSpacing: '0.2em', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                 Abrindo comprovante...
               </p>
             </div>
@@ -813,7 +756,7 @@ export function CountdownPhase({
               <p style={{
                 fontSize: 12,
                 color: '#c8960a',
-                fontFamily: "'Cinzel', serif",
+                fontFamily: "var(--font-space-grotesk), sans-serif",
                 fontWeight: 600,
                 letterSpacing: '0.3em',
                 textTransform: 'uppercase',
@@ -841,17 +784,17 @@ export function CountdownPhase({
                 <p style={{
                   fontSize: 13,
                   color: '#c8960a',
-                  fontFamily: "'Cinzel', serif",
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   fontWeight: 600,
                 }}>
                   Aguardando Concurso {targetConcurso ?? ''}
                 </p>
-                <p style={{ fontSize: 11, color: '#3d2f15', marginTop: 3 }}>
+                <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.55)', marginTop: 3 }}>
                   A Loteria Federal ainda não publicou o resultado
                 </p>
-                <p style={{ fontSize: 11, color: '#2d2415', marginTop: 4, fontFamily: "'JetBrains Mono', monospace" }}>
+                <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.45)', marginTop: 4, fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                   próxima verificação em{' '}
-                  <span style={{ color: '#5c4a28' }}>{pollCountdown}s</span>
+                  <span style={{ color: '#c8960a' }}>{pollCountdown}s</span>
                 </p>
               </div>
             </div>
@@ -863,13 +806,13 @@ export function CountdownPhase({
                 background: 'rgba(185,28,28,0.06)',
                 border: '1px solid rgba(185,28,28,0.18)',
               }}>
-                <p style={{ fontSize: 13, color: '#dc2626', fontFamily: "'Cinzel', serif" }}>Erro no sorteio</p>
+                <p style={{ fontSize: 13, color: '#dc2626', fontFamily: "var(--font-space-grotesk), sans-serif" }}>Erro no sorteio</p>
                 <p style={{ fontSize: 11, marginTop: 4, color: 'rgba(185,28,28,0.5)' }}>{drawError}</p>
               </div>
               <button onClick={handleRetry} className="flex items-center gap-2 transition-all"
-                      style={{ fontSize: 11, color: '#3d2f15' }}
+                      style={{ fontSize: 13, color: 'rgba(200,150,10,0.55)' }}
                       onMouseEnter={e => ((e.currentTarget as HTMLButtonElement).style.color = '#c8960a')}
-                      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = '#3d2f15')}>
+                      onMouseLeave={e => ((e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,150,10,0.55)')}>
                 <RefreshCw className="w-3 h-3"/> Tentar novamente
               </button>
             </div>
@@ -882,7 +825,7 @@ export function CountdownPhase({
                 <p style={{
                   fontSize: 11,
                   color: '#c8960a',
-                  fontFamily: "'Cinzel', serif",
+                  fontFamily: "var(--font-space-grotesk), sans-serif",
                   fontWeight: 600,
                   letterSpacing: '0.22em',
                   textTransform: 'uppercase',
@@ -901,9 +844,9 @@ export function CountdownPhase({
             /* ── COUNTDOWN (idle) ── */
             <div className="flex flex-col items-center gap-2 text-center">
               <p style={{
-                fontSize: 10,
-                color: '#2d2415',
-                fontFamily: "'Cinzel', serif",
+                fontSize: 13,
+                color: 'rgba(200,150,10,0.65)',
+                fontFamily: "var(--font-space-grotesk), sans-serif",
                 fontWeight: 600,
                 letterSpacing: '0.35em',
                 textTransform: 'uppercase',
@@ -913,9 +856,8 @@ export function CountdownPhase({
 
               {/* Main countdown timer */}
               <div style={{
-                fontFamily: "'Cinzel', serif",
-                fontWeight: 900,
-                fontSize: 'clamp(64px, 17vw, 96px)',
+                fontFamily: "var(--font-bebas-neue), sans-serif",
+                fontSize: 'clamp(72px, 18vw, 108px)',
                 letterSpacing: '0.05em',
                 lineHeight: 1,
                 color: isUrgent ? '#e07c1e' : '#f0ddb0',
@@ -929,7 +871,7 @@ export function CountdownPhase({
               </div>
 
               {/* Date */}
-              <p style={{ fontSize: 11, color: '#2d2415', fontFamily: "'JetBrains Mono', monospace" }}>
+              <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.5)', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                 {new Date(drawAt).toLocaleString('pt-BR', {
                   weekday: 'short', day: '2-digit', month: '2-digit',
                   hour: '2-digit', minute: '2-digit',
@@ -947,54 +889,23 @@ export function CountdownPhase({
                   <span className="w-1.5 h-1.5 rounded-full"
                         style={{ background: '#c8960a', animation: 'dl-ring-breathe 2.5s ease-in-out infinite' }}/>
                   <span style={{
-                    fontSize: 10,
-                    color: '#4a3920',
-                    fontFamily: "'Cinzel', serif",
+                    fontSize: 13,
+                    color: 'rgba(200,150,10,0.65)',
+                    fontFamily: "var(--font-space-grotesk), sans-serif",
                     fontWeight: 600,
                   }}>Concurso</span>
                   <span style={{
-                    fontSize: 11,
+                    fontSize: 13,
                     color: '#c8960a',
-                    fontFamily: "'Cinzel', serif",
+                    fontFamily: "var(--font-space-grotesk), sans-serif",
                     fontWeight: 700,
                   }}>{targetConcurso}</span>
-                  <span style={{ fontSize: 10, color: '#2d2415', fontFamily: "'Cinzel', serif" }}>
+                  <span style={{ fontSize: 13, color: 'rgba(200,150,10,0.45)', fontFamily: "var(--font-space-grotesk), sans-serif" }}>
                     · Loteria Federal
                   </span>
                 </div>
               )}
 
-              {/* DEBUG: force-start */}
-              {onForceStart && spinState === 'idle' && (
-                <button
-                  onClick={() => {
-                    setSpinState('waiting');
-                    endCalled.current = true;
-                    spinStarted.current = false;
-                    onForceStart();
-                  }}
-                  className="mt-3 px-5 py-2 rounded-lg font-bold uppercase tracking-wider transition-all"
-                  style={{
-                    fontSize: 10,
-                    border: '1px dashed rgba(200,150,10,0.18)',
-                    color: 'rgba(200,150,10,0.3)',
-                    background: 'transparent',
-                    fontFamily: "'Cinzel', serif",
-                  }}
-                  onMouseEnter={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'rgba(200,150,10,0.05)';
-                    (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,150,10,0.65)';
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(200,150,10,0.3)';
-                  }}
-                  onMouseLeave={e => {
-                    (e.currentTarget as HTMLButtonElement).style.background = 'transparent';
-                    (e.currentTarget as HTMLButtonElement).style.color = 'rgba(200,150,10,0.3)';
-                    (e.currentTarget as HTMLButtonElement).style.borderColor = 'rgba(200,150,10,0.18)';
-                  }}
-                >
-                  ▶ Iniciar Sorteio (teste)
-                </button>
-              )}
             </div>
           )}
         </main>
@@ -1005,12 +916,12 @@ export function CountdownPhase({
             onClick={() => setFaqOpen(v => !v)}
             className="w-full flex items-center justify-between px-6 py-3.5 transition-colors"
             style={{
-              fontSize: 10,
-              color: faqOpen ? 'rgba(200,150,10,0.45)' : '#2d2415',
+              fontSize: 13,
+              color: faqOpen ? 'rgba(200,150,10,0.75)' : 'rgba(200,150,10,0.45)',
               letterSpacing: '0.18em',
               textTransform: 'uppercase',
               fontWeight: 700,
-              fontFamily: "'Cinzel', serif",
+              fontFamily: "var(--font-space-grotesk), sans-serif",
             }}
           >
             <span className="flex items-center gap-2">
@@ -1024,33 +935,33 @@ export function CountdownPhase({
             <div className="px-5 pb-6">
               <div className="rounded-xl p-4 space-y-3"
                    style={{ background: 'rgba(200,150,10,0.025)', border: '1px solid rgba(200,150,10,0.07)' }}>
-                <p style={{ color: 'rgba(240,221,176,0.5)', fontSize: 12, fontFamily: "'Cinzel', serif", fontWeight: 600 }}>
+                <p style={{ color: 'rgba(240,221,176,0.75)', fontSize: 14, fontFamily: "var(--font-space-grotesk), sans-serif", fontWeight: 600 }}>
                   Transparência 100% verificável
                 </p>
-                <p style={{ fontSize: 11, color: '#4a3920', lineHeight: 1.7 }}>
+                <p style={{ fontSize: 13, color: 'rgba(200,150,10,0.65)', lineHeight: 1.7 }}>
                   O número vencedor é determinado pelo resultado oficial da{' '}
                   <span style={{ color: '#c8960a', fontWeight: 700 }}>Loteria Federal da Caixa</span>
                   {' '}— ninguém controla o resultado.
                 </p>
                 <div className="rounded-lg p-3 space-y-1.5"
-                     style={{ background: 'rgba(0,0,0,0.3)', fontSize: 11 }}>
-                  <p style={{ fontSize: 9, color: '#2d2415', textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "'Cinzel', serif", fontWeight: 600, marginBottom: 6 }}>
+                     style={{ background: 'rgba(0,0,0,0.3)', fontSize: 13 }}>
+                  <p style={{ fontSize: 12, color: 'rgba(200,150,10,0.6)', textTransform: 'uppercase', letterSpacing: '0.2em', fontFamily: "var(--font-space-grotesk), sans-serif", fontWeight: 600, marginBottom: 6 }}>
                     Fórmula
                   </p>
-                  <p style={{ color: '#4a3920' }}>
+                  <p style={{ color: 'rgba(200,150,10,0.6)' }}>
                     1. Pegamos os <span style={{ color: '#c8960a' }}>2 últimos dígitos</span> do 1º Prêmio
                   </p>
-                  <p style={{ color: '#4a3920' }}>
+                  <p style={{ color: 'rgba(200,150,10,0.6)' }}>
                     2. Calculamos:{' '}
-                    <code style={{ fontFamily: "'JetBrains Mono', monospace", color: '#c8960a' }}>
+                    <code style={{ fontFamily: "var(--font-space-grotesk), sans-serif", color: '#c8960a' }}>
                       (últimos2 % {N}) + 1
                     </code>
                   </p>
-                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.03)', paddingTop: 8, marginTop: 4 }}>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", color: '#2d2415' }}>
+                  <div style={{ borderTop: '1px solid rgba(255,255,255,0.05)', paddingTop: 8, marginTop: 4 }}>
+                    <span style={{ fontFamily: "var(--font-space-grotesk), sans-serif", color: 'rgba(200,150,10,0.45)', fontSize: 12 }}>
                       Ex: 1º Prêmio{' '}
-                      <span style={{ color: '#3d2f15' }}>097680</span>
-                      {' '}→ últ.2 = <span style={{ color: '#3d2f15' }}>80</span>
+                      <span style={{ color: 'rgba(200,150,10,0.65)' }}>097680</span>
+                      {' '}→ últ.2 = <span style={{ color: 'rgba(200,150,10,0.65)' }}>80</span>
                       {' '}→ (80 % {N}) + 1 ={' '}
                       <span style={{ color: '#c8960a', fontWeight: 700 }}>{(80 % N) + 1}</span>
                     </span>
@@ -1059,10 +970,10 @@ export function CountdownPhase({
                 <a href="https://loterias.caixa.gov.br/Paginas/Federal.aspx"
                    target="_blank" rel="noopener noreferrer"
                    className="flex items-center gap-1 transition-colors"
-                   style={{ fontSize: 10, color: 'rgba(200,150,10,0.35)', fontFamily: "'Cinzel', serif" }}
+                   style={{ fontSize: 13, color: 'rgba(200,150,10,0.5)', fontFamily: "var(--font-space-grotesk), sans-serif" }}
                    onMouseEnter={e => ((e.currentTarget as HTMLAnchorElement).style.color = '#c8960a')}
-                   onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(200,150,10,0.35)')}>
-                  <ExternalLink className="w-3 h-3"/>
+                   onMouseLeave={e => ((e.currentTarget as HTMLAnchorElement).style.color = 'rgba(200,150,10,0.5)')}>
+                  <ExternalLink className="w-3.5 h-3.5"/>
                   Verificar resultado oficial no site da Caixa
                 </a>
               </div>

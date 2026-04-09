@@ -25,7 +25,7 @@ export default async function LoginPage({
             Entrar
           </h1>
           <p className="mt-1 text-sm" style={{ color: '#7A7A8A' }}>
-            Insira seus dados para receber o código de acesso.
+            Digite seu email para receber o código de acesso.
           </p>
         </div>
         <LoginForm redirectTo={next} />

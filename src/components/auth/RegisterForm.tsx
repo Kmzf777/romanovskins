@@ -1,20 +1,39 @@
 'use client';
 import { useActionState } from 'react';
-import { loginAction } from '@/server/auth-actions';
+import { registerAction } from '@/server/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail } from 'lucide-react';
+import { Mail, Phone, User } from 'lucide-react';
 import Link from 'next/link';
 
 const initialState = { error: '' };
 
-export function LoginForm({ redirectTo }: { redirectTo?: string }) {
-  const [state, formAction, isPending] = useActionState(loginAction, initialState);
+interface Props {
+  redirectTo?: string;
+  prefillEmail?: string;
+}
+
+export function RegisterForm({ redirectTo, prefillEmail }: Props) {
+  const [state, formAction, isPending] = useActionState(registerAction, initialState);
 
   return (
     <form action={formAction} className="space-y-5">
       <input type="hidden" name="redirectTo" value={redirectTo || '/'} />
+
+      <div className="space-y-1.5">
+        <Label htmlFor="name" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <User size={14} className="inline mr-1.5" />Nome Completo
+        </Label>
+        <Input
+          id="name"
+          name="name"
+          placeholder="Seu nome completo"
+          required
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
 
       <div className="space-y-1.5">
         <Label htmlFor="email" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
@@ -25,6 +44,22 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
           name="email"
           type="email"
           placeholder="seu@email.com"
+          defaultValue={prefillEmail || ''}
+          required
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
+
+      <div className="space-y-1.5">
+        <Label htmlFor="whatsapp" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <Phone size={14} className="inline mr-1.5" />WhatsApp (com DDD)
+        </Label>
+        <Input
+          id="whatsapp"
+          name="whatsapp"
+          type="tel"
+          placeholder="11999999999"
           required
           disabled={isPending}
           className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
@@ -46,17 +81,17 @@ export function LoginForm({ redirectTo }: { redirectTo?: string }) {
           color: isPending ? '#7A7A8A' : '#0A0A0B',
         }}
       >
-        {isPending ? 'Enviando código...' : 'Receber Código'}
+        {isPending ? 'Enviando código...' : 'Criar Conta'}
       </Button>
 
       <p className="text-center text-sm" style={{ color: '#4A4A5A' }}>
-        Primeira vez?{' '}
+        Já tem conta?{' '}
         <Link
-          href={`/register${redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ''}`}
+          href={`/login${redirectTo ? `?next=${encodeURIComponent(redirectTo)}` : ''}`}
           className="underline"
           style={{ color: '#7A7A8A' }}
         >
-          Criar conta
+          Entrar
         </Link>
       </p>
     </form>
