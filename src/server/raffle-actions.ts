@@ -4,7 +4,6 @@ import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
-import { cookies } from 'next/headers';
 import { getLatestLotoFederal, calcularNumeroVencedor, getNextLotoFederalInfo, getLotoFederalByConcurso } from '@/lib/loterias';
 
 // MOCK DATA
