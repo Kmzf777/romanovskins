@@ -1,7 +1,7 @@
 import { getRaffleDetails, getRaffleTickets } from '@/server/raffle-actions';
 import { RaffleDetailClient } from '@/components/raffle/RaffleDetailClient';
+import { getCurrentUser } from '@/server/auth-actions';
 import { notFound } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,8 +14,8 @@ export default async function RafflePage({ params }: { params: Promise<{ id: str
     }
 
     const tickets = await getRaffleTickets(id);
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
+    const user = await getCurrentUser();
+    const userId = user?.id;
 
     return (
         <div className="container mx-auto p-4 max-w-4xl relative z-10">

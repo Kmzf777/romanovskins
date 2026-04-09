@@ -1,19 +1,14 @@
-import { createClient } from '@/lib/supabase/server';
+import { getCurrentUser } from '@/server/auth-actions';
 import { redirect } from 'next/navigation';
-import { cookies } from 'next/headers';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    const supabase = await createClient();
-    const cookieStore = await cookies();
-    const userId = cookieStore.get('romanov_user')?.value;
+    const user = await getCurrentUser();
 
-    if (!userId) {
+    if (!user) {
         redirect('/login');
     }
 
-    const { data: user } = await supabase.from('users').select('whatsapp').eq('id', userId).single();
-
-    if (!user || user.whatsapp !== process.env.ADMIN_WHATSAPP) {
+    if (user.whatsapp !== process.env.ADMIN_WHATSAPP) {
         redirect('/'); // Not admin
     }
 
