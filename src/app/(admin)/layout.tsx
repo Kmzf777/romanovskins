@@ -1,15 +1,13 @@
-import { getCurrentUser } from '@/server/auth-actions';
+import { cookies } from 'next/headers';
+import { isAdminTokenValid } from '@/lib/admin-auth';
 import { redirect } from 'next/navigation';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-    const user = await getCurrentUser();
+    const cookieStore = await cookies();
+    const adminToken = cookieStore.get('admin_session')?.value;
 
-    if (!user) {
-        redirect('/login');
-    }
-
-    if (user.whatsapp !== process.env.ADMIN_WHATSAPP) {
-        redirect('/'); // Not admin
+    if (!isAdminTokenValid(adminToken)) {
+        redirect('/adminromanovskins');
     }
 
     return (

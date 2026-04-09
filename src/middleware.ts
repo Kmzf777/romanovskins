@@ -2,6 +2,10 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function middleware(request: NextRequest) {
+  // Nota: verificação de auth das rotas /adminromanovskins é feita no nível
+  // das páginas (Node.js runtime) pois usa crypto.createHmac — incompatível
+  // com o Edge runtime do middleware.
+
   let supabaseResponse = NextResponse.next({ request })
 
   const supabase = createServerClient(

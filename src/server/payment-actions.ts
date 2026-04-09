@@ -1,10 +1,10 @@
 'use server';
 
 import { abacatePay } from '@/lib/abacatepay';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
-export async function createCheckoutAction(raffleId: string) {
+export async function createCheckoutAction(raffleId: string, taxId: string) {
     const supabase = await createClient();
     const { getCurrentUser } = await import('@/server/auth-actions');
     const currentUser = await getCurrentUser();
@@ -44,6 +44,8 @@ export async function createCheckoutAction(raffleId: string) {
 
         const phoneDigits = user.whatsapp.replace(/\D/g, '');
 
+        const taxIdDigits = taxId.replace(/\D/g, '');
+
         const payload = {
             frequency: 'ONE_TIME',
             methods: ['PIX'],
@@ -60,8 +62,8 @@ export async function createCheckoutAction(raffleId: string) {
             customer: {
                 name: user.name,
                 cellphone: phoneDigits,
-                email: `user${phoneDigits}@romanovrifas.com`,
-                taxId: '529.982.247-25'
+                email: user.email || `user${phoneDigits}@romanovrifas.com`,
+                taxId: taxIdDigits,
             }
         };
 
@@ -97,8 +99,9 @@ export async function createCheckoutAction(raffleId: string) {
           return { error: 'Erro ao obter link de pagamento. Tente novamente.' };
         }
 
-        // Salvar transação com o ID pré-gerado
-        const { error: insertError } = await supabase.from('transactions').insert({
+        // Salvar transação com o ID pré-gerado (requer service role — RLS bloqueia escrita direta)
+        const adminClient = createAdminClient();
+        const { error: insertError } = await adminClient.from('transactions').insert({
             id: transactionId,
             user_id: userId,
             raffle_id: raffleId,

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Clock, Hash, Calendar, Ticket, CreditCard, AlertCircle } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/server';
+import { PaymentStatusPoller } from '@/components/checkout/PaymentStatusPoller';
 
 export const dynamic = 'force-dynamic';
 
@@ -156,7 +157,9 @@ export default async function CheckoutSuccessPage({
           </div>
         )}
 
-        <div className="space-y-4 text-zinc-400 text-center mb-8 text-sm">
+        {!isPaid && tid && <PaymentStatusPoller tid={tid} />}
+
+        <div className="space-y-4 text-zinc-400 text-center mb-8 text-sm mt-6">
           <p>
             Informaremos o ganhador no grupo do WhatsApp assim que sair o sorteio.
           </p>

@@ -6,6 +6,12 @@ export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ raffleId: string }> }
 ) {
+  // Autenticação obrigatória via CRON_SECRET
+  const secret = req.headers.get('x-cron-secret');
+  if (!secret || secret !== process.env.CRON_SECRET) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   const { raffleId } = await params;
   const supabase = createAdminClient();
   const force = req.nextUrl.searchParams.get('force') === 'true';
@@ -64,8 +70,6 @@ export async function POST(
     }
 
     // 5. Fetch the specific committed concurso result
-    //    force=true skips to latest (used only for animation testing)
-    //    Falls back to latest if target_concurso is not set (legacy sessions)
     let lotoResult;
     try {
       if (session.target_concurso && !force) {
@@ -75,7 +79,6 @@ export async function POST(
       }
     } catch (err) {
       if (String(err).includes('CONCURSO_NOT_AVAILABLE')) {
-        // Result not published yet — revert to waiting so client can retry
         await supabase
           .from('draw_sessions')
           .update({ status: 'waiting' })
@@ -139,7 +142,6 @@ export async function POST(
     return NextResponse.json({ ok: true, winnerTicketNumber });
   } catch (err) {
     console.error('Draw error:', err);
-    // Revert to waiting to allow retry
     await supabase
       .from('draw_sessions')
       .update({ status: 'waiting' })

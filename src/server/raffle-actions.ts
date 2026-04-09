@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { getLatestLotoFederal, calcularNumeroVencedor, getNextLotoFederalInfo, getLotoFederalByConcurso } from '@/lib/loterias';
+import { isAdminTokenValid } from '@/lib/admin-auth';
 
 // MOCK DATA
 const MOCK_RAFFLES = [
@@ -109,9 +110,15 @@ const createRaffleSchema = z.object({
 export async function createRaffleAction(prevState: any, formData: FormData) {
     if (!checkEnv()) return { error: 'Modo Demo: Alterações não salvas.' };
 
-    const supabase = await createClient();
+    // Verifica autenticação admin
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    const adminToken = cookieStore.get('admin_session')?.value;
+    if (!isAdminTokenValid(adminToken)) {
+        return { error: 'Não autorizado.' };
+    }
 
-    // TODO: Add Admin Check here using cookie/middleware logic if needed for stricter security
+    const supabase = createAdminClient();
 
     const title = formData.get('title') as string;
     const description = formData.get('description') as string;
@@ -120,6 +127,10 @@ export async function createRaffleAction(prevState: any, formData: FormData) {
     const total_numbers = parseInt(formData.get('total_numbers') as string);
     const float_value = (formData.get('float_value') as string) || null;
     const wear_condition = (formData.get('wear_condition') as string) || null;
+    const featured = formData.get('featured') === 'true';
+    const original_price = formData.get('original_price')
+        ? parseFloat(formData.get('original_price') as string)
+        : null;
 
     const validation = createRaffleSchema.safeParse({
         title, description, image_url, price_per_ticket, total_numbers
@@ -139,6 +150,8 @@ export async function createRaffleAction(prevState: any, formData: FormData) {
             price_per_ticket,
             total_numbers,
             status: 'active',
+            featured,
+            original_price,
             float_value: float_value || null,
             wear_condition: wear_condition || null,
         })
@@ -177,8 +190,9 @@ export async function createRaffleAction(prevState: any, formData: FormData) {
         }
     }
 
+    revalidatePath('/adminromanovskins');
     revalidatePath('/');
-    redirect('/');
+    redirect('/adminromanovskins');
 }
 
 export async function getRaffles() {
@@ -247,8 +261,16 @@ export async function getRaffleTickets(raffleId: string) {
         }));
     }
 
-    const supabase = await createClient();
-    const { data, error } = await supabase
+    // Clean up expired reservations before returning tickets
+    const adminClient = createAdminClient();
+    await adminClient
+        .from('tickets')
+        .update({ status: 'available', user_id: null, reserved_at: null, expires_at: null })
+        .eq('raffle_id', raffleId)
+        .eq('status', 'reserved')
+        .lt('expires_at', new Date().toISOString());
+
+    const { data, error } = await adminClient
         .from('tickets')
         .select('*')
         .eq('raffle_id', raffleId)
@@ -271,6 +293,14 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
         return { success: false, error: 'Usuário não autenticado' };
     }
     const userId = currentUser.id;
+
+    // Release expired reservations from other users before attempting to reserve
+    await supabase
+        .from('tickets')
+        .update({ status: 'available', user_id: null, reserved_at: null, expires_at: null })
+        .eq('raffle_id', raffleId)
+        .eq('status', 'reserved')
+        .lt('expires_at', new Date().toISOString());
 
     const expiresAt = new Date(Date.now() + 20 * 60 * 1000).toISOString(); // +20 min
 
@@ -345,7 +375,7 @@ export async function getAdminStats() {
         supabase.from('raffles').select('id, status'),
         supabase.from('tickets').select('id', { count: 'exact', head: true }).eq('status', 'sold'),
         supabase.from('transactions').select('amount').eq('status', 'paid'),
-        supabase.from('profiles').select('id', { count: 'exact', head: true }),
+        supabase.from('users').select('id', { count: 'exact', head: true }),
     ]);
 
     const totalRevenue = (revenueRes.data || []).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -453,10 +483,9 @@ export async function getRecentWinners() {
 }
 
 export async function performDrawAction(raffleId: string, manualPrimeiroPremio?: string) {
-    const { getCurrentUser } = await import('@/server/auth-actions');
-    const currentUser = await getCurrentUser();
-
-    if (!currentUser || currentUser.whatsapp !== process.env.ADMIN_WHATSAPP) {
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    if (!isAdminTokenValid(cookieStore.get('admin_session')?.value)) {
         return { success: false, error: 'Não autorizado.' };
     }
 
@@ -539,7 +568,7 @@ export async function performDrawAction(raffleId: string, manualPrimeiroPremio?:
 
     // Buscar nome do ganhador para exibir no modal
     const { data: winner } = await supabase
-        .from('profiles')
+        .from('users')
         .select('name, whatsapp')
         .eq('id', winnerTicket.user_id)
         .single();
@@ -615,9 +644,9 @@ export async function getAllWinners(page = 1, perPage = 12) {
 export async function openDrawSessionAction(
   raffleId: string
 ): Promise<{ success: boolean; drawUrl?: string; nextConcurso?: number; drawAt?: string; error?: string }> {
-  const { getCurrentUser } = await import('@/server/auth-actions');
-  const currentUser = await getCurrentUser();
-  if (!currentUser || currentUser.whatsapp !== process.env.ADMIN_WHATSAPP) return { success: false, error: 'Não autorizado.' };
+  const { cookies } = await import('next/headers');
+  const cookieStore = await cookies();
+  if (!isAdminTokenValid(cookieStore.get('admin_session')?.value)) return { success: false, error: 'Não autorizado.' };
 
   const supabase = createAdminClient();
 

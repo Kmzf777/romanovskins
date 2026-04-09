@@ -1,115 +1,116 @@
 'use server';
 
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { redirect } from 'next/navigation';
 import { z } from 'zod';
+import { generateAdminToken } from '@/lib/admin-auth';
 
-const emailSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email('Email inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 const registerSchema = z.object({
   name: z.string().min(2, 'Nome deve ter pelo menos 2 caracteres'),
   email: z.string().email('Email inválido'),
   whatsapp: z.string().min(10, 'WhatsApp inválido'),
+  password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
 });
 
 function normalizeWhatsApp(raw: string): string {
   return raw.replace(/\D/g, '');
 }
 
-async function sendOtp(email: string): Promise<string | null> {
-  const supabase = await createClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: { shouldCreateUser: true },
-  });
-  if (error) {
-    console.error('OTP send error:', error);
-    return 'Erro ao enviar código. Tente novamente.';
-  }
-  return null;
+/** Aceita apenas paths internos para evitar open redirect */
+function safeRedirectPath(redirectTo: string | null | undefined): string {
+  if (!redirectTo || !redirectTo.startsWith('/')) return '/';
+  // Bloqueia //evil.com (protocol-relative)
+  if (redirectTo.startsWith('//')) return '/';
+  return redirectTo;
 }
 
-// Login: email only — for returning users
+// Login: email + password
 export async function loginAction(prevState: any, formData: FormData) {
   const email = (formData.get('email') as string)?.trim().toLowerCase();
-  const redirectTo = (formData.get('redirectTo') as string) || '/';
+  const password = formData.get('password') as string;
+  const redirectTo = safeRedirectPath(formData.get('redirectTo') as string);
 
-  const valid = emailSchema.safeParse({ email });
-  if (!valid.success) {
-    return { error: valid.error.issues[0]?.message ?? 'Email inválido' };
-  }
-
-  const err = await sendOtp(email);
-  if (err) return { error: err };
-
-  redirect(`/login/verify?${new URLSearchParams({ email, next: redirectTo }).toString()}`);
-}
-
-// Register: name + email + whatsapp — for new users
-export async function registerAction(prevState: any, formData: FormData) {
-  const name = (formData.get('name') as string)?.trim();
-  const email = (formData.get('email') as string)?.trim().toLowerCase();
-  const whatsapp = normalizeWhatsApp(formData.get('whatsapp') as string);
-  const redirectTo = (formData.get('redirectTo') as string) || '/';
-
-  const valid = registerSchema.safeParse({ name, email, whatsapp });
+  const valid = loginSchema.safeParse({ email, password });
   if (!valid.success) {
     return { error: valid.error.issues[0]?.message ?? 'Dados inválidos' };
   }
 
-  const err = await sendOtp(email);
-  if (err) return { error: err };
+  const supabase = await createClient();
+  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-  redirect(`/login/verify?${new URLSearchParams({ email, name, whatsapp, next: redirectTo }).toString()}`);
+  if (error) {
+    if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+      return { error: 'Email ou senha incorretos.' };
+    }
+    if (error.message.includes('Email not confirmed')) {
+      return { error: 'Email não confirmado. Verifique sua caixa de entrada.' };
+    }
+    return { error: 'Erro ao entrar. Tente novamente.' };
+  }
+
+  if (!data.user) return { error: 'Erro ao entrar. Tente novamente.' };
+
+  // Verifica se perfil existe na tabela users
+  const { data: profile } = await supabase
+    .from('users')
+    .select('id')
+    .eq('id', data.user.id)
+    .maybeSingle();
+
+  if (!profile) {
+    redirect(`/register?email=${encodeURIComponent(email)}&next=${encodeURIComponent(redirectTo)}&incomplete=true`);
+  }
+
+  redirect(redirectTo);
 }
 
-// Verify OTP — shared by login and register flows
-export async function verifyOtpAction(prevState: any, formData: FormData) {
+// Register: name + email + whatsapp + password
+export async function registerAction(prevState: any, formData: FormData) {
+  const name = (formData.get('name') as string)?.trim();
   const email = (formData.get('email') as string)?.trim().toLowerCase();
-  const token = (formData.get('token') as string)?.trim();
-  const name = (formData.get('name') as string)?.trim() || '';
-  const whatsapp = (formData.get('whatsapp') as string)?.trim() || '';
-  const next = (formData.get('next') as string) || '/';
+  const whatsapp = normalizeWhatsApp(formData.get('whatsapp') as string);
+  const password = formData.get('password') as string;
+  const redirectTo = safeRedirectPath(formData.get('redirectTo') as string);
 
-  if (!email || !token || token.length !== 6) {
-    return { error: 'Código inválido. Deve ter 6 dígitos.' };
+  const valid = registerSchema.safeParse({ name, email, whatsapp, password });
+  if (!valid.success) {
+    return { error: valid.error.issues[0]?.message ?? 'Dados inválidos' };
   }
 
   const supabase = await createClient();
+  const adminClient = createAdminClient();
 
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  const { data, error } = await supabase.auth.signUp({ email, password });
   if (error) {
-    console.error('OTP verify error:', error);
-    return { error: 'Código inválido ou expirado. Solicite um novo.' };
-  }
-
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return { error: 'Sessão inválida. Tente novamente.' };
-
-  // Register flow: create/update profile
-  if (name && whatsapp) {
-    const { error: upsertError } = await supabase.from('profiles').upsert({
-      id: user.id,
-      name,
-      whatsapp: normalizeWhatsApp(whatsapp),
-    });
-    if (upsertError) {
-      console.error('Profile upsert error:', upsertError);
-      return { error: 'Erro ao salvar perfil. Tente novamente.' };
+    if (error.message.includes('already registered') || error.message.includes('User already registered')) {
+      return { error: 'Este email já está cadastrado. Faça login.' };
     }
-    redirect(next);
+    return { error: 'Erro ao criar conta. Tente novamente.' };
   }
 
-  // Login flow: check if profile exists
-  const { data: profile } = await supabase.from('profiles').select('id').eq('id', user.id).maybeSingle();
-  if (!profile) {
-    // Auth user exists but no profile — send to register to complete
-    redirect(`/register?email=${encodeURIComponent(email)}&next=${encodeURIComponent(next)}&incomplete=true`);
+  if (!data.user) {
+    return { error: 'Erro ao criar conta. Tente novamente.' };
   }
 
-  redirect(next);
+  // Usa admin client para criar o perfil — ignora RLS (sessão ainda não está no cookie)
+  const { error: profileError } = await adminClient.from('users').upsert({
+    id: data.user.id,
+    name,
+    whatsapp,
+  });
+
+  if (profileError) {
+    console.error('Profile upsert error:', profileError);
+    await adminClient.auth.admin.deleteUser(data.user.id);
+    return { error: 'Erro ao salvar perfil. Tente novamente.' };
+  }
+
+  redirect(redirectTo);
 }
 
 export async function logoutAction() {
@@ -125,7 +126,7 @@ export async function getCurrentUser() {
   if (error || !user) return null;
 
   const { data: profile } = await supabase
-    .from('profiles')
+    .from('users')
     .select('*')
     .eq('id', user.id)
     .single();
@@ -141,7 +142,7 @@ export async function getCurrentUser() {
   };
 }
 
-// Admin login remains unchanged
+// Admin login com cookie HMAC assinado
 const adminSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(1, 'Senha obrigatória'),
@@ -156,18 +157,31 @@ export async function loginAdminAction(prevState: any, formData: FormData) {
     return { error: 'Dados inválidos.' };
   }
 
-  if (email !== process.env.User || password !== process.env.Password) {
+  const crypto = await import('crypto');
+  const adminEmail = process.env.ADMIN_EMAIL ?? '';
+  const adminPassword = process.env.ADMIN_PASSWORD ?? '';
+  const emailMatch = email.length === adminEmail.length &&
+    crypto.timingSafeEqual(Buffer.from(email), Buffer.from(adminEmail));
+  const passwordMatch = password.length === adminPassword.length &&
+    crypto.timingSafeEqual(Buffer.from(password), Buffer.from(adminPassword));
+  if (!emailMatch || !passwordMatch) {
     return { error: 'Credenciais inválidas.' };
   }
 
   const { cookies } = await import('next/headers');
   const cookieStore = await cookies();
-  cookieStore.set('admin_session', 'true', {
+
+  cookieStore.set('admin_session', generateAdminToken(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
     maxAge: 60 * 60 * 24,
     path: '/',
   });
 
   redirect('/adminromanovskins');
+}
+
+export async function verifyOtpAction(prevState: any, formData: FormData) {
+  return { error: 'Método não suportado.' };
 }

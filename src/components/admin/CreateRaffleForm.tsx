@@ -69,6 +69,24 @@ export function CreateRaffleForm() {
                             </select>
                         </div>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="original_price">Preço Original (R$) — opcional</Label>
+                            <Input id="original_price" name="original_price" type="number" step="0.01" min="0" placeholder="Ex: 1200.00" disabled={isPending} />
+                        </div>
+                        <div className="space-y-2 flex flex-col justify-end">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="featured"
+                                    value="true"
+                                    disabled={isPending}
+                                    className="w-4 h-4 rounded border-input accent-primary"
+                                />
+                                <span className="text-sm font-medium leading-none">Destaque na home</span>
+                            </label>
+                        </div>
+                    </div>
                     {state?.error && (
                         <p className="text-sm text-red-500 font-medium">{state.error}</p>
                     )}

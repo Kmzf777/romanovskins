@@ -1,6 +1,7 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { abacatePay } from '@/lib/abacatepay';
 import { NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -22,29 +23,38 @@ export async function GET(request: Request) {
     return NextResponse.json({ status: 'not_found' }, { status: 404 });
   }
 
-  // Already paid — nothing to do
   if (transaction.status === 'paid') {
     return NextResponse.json({ status: 'paid' });
   }
 
-  // Transaction has no valid external_id — can't query AbacatePay
   if (!transaction.external_id || transaction.external_id === 'unknown') {
     console.error('⚠️ Transaction has no valid external_id:', transaction.id);
     return NextResponse.json({ status: 'pending' });
   }
 
-  // Query AbacatePay for current billing status
   try {
-    const response = await abacatePay.get(`/billing/${transaction.external_id}`);
-    const billingData = response.data?.data ?? response.data;
-    const billingStatus: string =
-      billingData?.status ??
-      billingData?.billing?.status ??
-      '';
+    // Correct endpoint: GET /billing/list (not /billing/listAll, not /billing/{id})
+    const response = await abacatePay.get('/billing/list');
+    const list: any[] = response.data?.data ?? response.data ?? [];
 
+    if (!Array.isArray(list)) {
+      console.error('❌ Unexpected /billing/list response shape:', JSON.stringify(response.data).slice(0, 200));
+      return NextResponse.json({ status: 'pending' });
+    }
+
+    const billing = list.find((b: any) => b.id === transaction.external_id);
+
+    if (!billing) {
+      console.warn('⚠️ Billing not found in list for external_id:', transaction.external_id,
+        '| Total billings returned:', list.length);
+      return NextResponse.json({ status: 'pending' });
+    }
+
+    const billingStatus: string = (billing.status ?? '').toUpperCase();
     console.log('📥 AbacatePay billing status for', transaction.external_id, ':', billingStatus);
 
-    if (billingStatus.toUpperCase() === 'PAID' || billingStatus === 'paid') {
+    if (billingStatus === 'PAID') {
+      // Mark transaction paid
       const { data: updatedRows } = await supabase
         .from('transactions')
         .update({ status: 'paid' })
@@ -53,29 +63,33 @@ export async function GET(request: Request) {
         .select('id');
 
       if (!updatedRows || updatedRows.length === 0) {
-        // Another request already confirmed payment — just return paid
         return NextResponse.json({ status: 'paid' });
       }
 
-      const { data: updatedTickets, error: ticketErr } = await supabase
+      // Mark tickets sold
+      const { error: ticketErr } = await supabase
         .from('tickets')
         .update({ status: 'sold', expires_at: null })
         .eq('raffle_id', transaction.raffle_id)
         .in('ticket_number', transaction.ticket_numbers)
-        .select('ticket_number');
+        .eq('user_id', transaction.user_id);
 
       if (ticketErr) {
-        console.error('❌ Error updating tickets in confirm-payment:', ticketErr);
+        console.error('❌ Error updating tickets:', ticketErr);
       } else {
-        console.log('✅ confirm-payment: tickets sold:', updatedTickets?.map((t: any) => t.ticket_number));
+        console.log('✅ confirm-payment: tickets sold for transaction', transaction.id);
       }
+
+      revalidatePath(`/rifa/${transaction.raffle_id}`);
+      revalidatePath('/');
+      revalidatePath('/meus-tickets');
 
       return NextResponse.json({ status: 'paid' });
     }
 
     return NextResponse.json({ status: 'pending' });
   } catch (e: any) {
-    console.error('❌ Error querying AbacatePay in confirm-payment:', e.response?.data || e.message);
+    console.error('❌ Error querying AbacatePay:', e.response?.data || e.message);
     return NextResponse.json({ status: 'pending' });
   }
 }

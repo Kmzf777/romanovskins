@@ -4,7 +4,7 @@ import { registerAction } from '@/server/auth-actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Mail, Phone, User } from 'lucide-react';
+import { Mail, Phone, User, Lock } from 'lucide-react';
 import Link from 'next/link';
 
 const initialState = { error: '' };
@@ -66,6 +66,22 @@ export function RegisterForm({ redirectTo, prefillEmail }: Props) {
         />
       </div>
 
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className="text-sm font-medium" style={{ color: '#7A7A8A' }}>
+          <Lock size={14} className="inline mr-1.5" />Senha
+        </Label>
+        <Input
+          id="password"
+          name="password"
+          type="password"
+          placeholder="Mínimo 6 caracteres"
+          required
+          minLength={6}
+          disabled={isPending}
+          className="h-12 rounded-xl border-[#2A2A32] bg-[#111114] text-[#F0EAD6] placeholder:text-[#4A4A5A] focus:border-[#F5C518] focus:ring-[#F5C518]/20"
+        />
+      </div>
+
       {state?.error && (
         <p className="text-sm font-medium px-3 py-2 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20">
           {state.error}
@@ -81,7 +97,7 @@ export function RegisterForm({ redirectTo, prefillEmail }: Props) {
           color: isPending ? '#7A7A8A' : '#0A0A0B',
         }}
       >
-        {isPending ? 'Enviando código...' : 'Criar Conta'}
+        {isPending ? 'Criando conta...' : 'Criar Conta'}
       </Button>
 
       <p className="text-center text-sm" style={{ color: '#4A4A5A' }}>

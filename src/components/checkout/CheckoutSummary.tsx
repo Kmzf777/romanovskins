@@ -1,17 +1,31 @@
 'use client';
 
 import { createCheckoutAction } from '@/server/payment-actions';
-import { useTransition } from 'react';
+import { useTransition, useState } from 'react';
 import { toast } from 'sonner';
 import { CountdownTimer } from './CountdownTimer';
 import { Ticket } from 'lucide-react';
 
+function formatCpf(value: string) {
+    const digits = value.replace(/\D/g, '').slice(0, 11);
+    return digits
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d)/, '$1.$2')
+        .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+}
+
 export function CheckoutSummary({ raffle, tickets, expiresAt }: any) {
     const [isPending, startTransition] = useTransition();
+    const [cpf, setCpf] = useState('');
 
     const handlePayment = () => {
+        const digits = cpf.replace(/\D/g, '');
+        if (digits.length !== 11) {
+            toast.error('Informe um CPF válido (11 dígitos).');
+            return;
+        }
         startTransition(async () => {
-            const res = await createCheckoutAction(raffle.id);
+            const res = await createCheckoutAction(raffle.id, digits);
             if (res.error) { toast.error(res.error); }
             else if (res.url) { window.location.href = res.url; }
         });
@@ -81,6 +95,31 @@ export function CheckoutSummary({ raffle, tickets, expiresAt }: any) {
                     >
                         R$ {total}
                     </span>
+                </div>
+
+                {/* CPF */}
+                <div className="p-6" style={{ borderBottom: '1px solid #2A2A32' }}>
+                    <label className="block text-xs uppercase tracking-widest font-bold mb-2" style={{ color: '#4A4A5A' }}>
+                        CPF do Comprador
+                    </label>
+                    <input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="000.000.000-00"
+                        value={cpf}
+                        onChange={e => setCpf(formatCpf(e.target.value))}
+                        disabled={isPending}
+                        maxLength={14}
+                        className="w-full h-11 rounded-xl px-4 text-sm font-medium outline-none focus:ring-2 disabled:opacity-50"
+                        style={{
+                            backgroundColor: '#1A1A1E',
+                            border: '1px solid #2A2A32',
+                            color: '#F0EAD6',
+                        }}
+                    />
+                    <p className="text-xs mt-1" style={{ color: '#4A4A5A' }}>
+                        Exigido pela plataforma de pagamento
+                    </p>
                 </div>
 
                 {/* CTA */}

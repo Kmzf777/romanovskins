@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers';
+import { isAdminTokenValid } from '@/lib/admin-auth';
 import { AdminLoginForm } from '@/components/admin/AdminLoginForm';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -9,9 +10,9 @@ export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
     const cookieStore = await cookies();
-    const adminSession = cookieStore.get('admin_session')?.value;
+    const adminToken = cookieStore.get('admin_session')?.value;
 
-    if (!adminSession) {
+    if (!isAdminTokenValid(adminToken)) {
         return (
             <div className="flex min-h-screen items-center justify-center p-4 relative z-10">
                 <AdminLoginForm />
