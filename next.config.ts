@@ -1,23 +1,13 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Allow images from Steam CDN and other known image hosts
+  // Allow images from any HTTPS host — needed because raffle image_url is
+  // admin-entered and can point to Steam CDN, Reddit, Imgur, Supabase, etc.
   images: {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'steamcommunity-a.akamaihd.net',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: '*.steamstatic.com',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'owwvqqvrhhjswehkarse.supabase.co',
-        pathname: '/storage/v1/object/public/**',
+        hostname: '**',
       },
     ],
   },
