@@ -5,6 +5,26 @@ import { redirect } from 'next/navigation';
 import { z } from 'zod';
 import { generateAdminToken } from '@/lib/admin-auth';
 
+// Simple in-memory rate limiter
+// Note: resets per serverless instance. For multi-instance production,
+// replace with @upstash/ratelimit + Redis.
+const loginAttemptMap = new Map<string, { count: number; resetAt: number }>();
+
+function isRateLimited(key: string, limit: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = loginAttemptMap.get(key);
+
+  if (!entry || entry.resetAt < now) {
+    loginAttemptMap.set(key, { count: 1, resetAt: now + windowMs });
+    return false;
+  }
+
+  if (entry.count >= limit) return true;
+
+  entry.count++;
+  return false;
+}
+
 const loginSchema = z.object({
   email: z.string().email('Email inválido'),
   password: z.string().min(6, 'Senha deve ter pelo menos 6 caracteres'),
@@ -34,6 +54,11 @@ export async function loginAction(prevState: any, formData: FormData) {
   const email = (formData.get('email') as string)?.trim().toLowerCase();
   const password = formData.get('password') as string;
   const redirectTo = safeRedirectPath(formData.get('redirectTo') as string);
+
+  // Rate limit: 10 attempts per 15 minutes per email
+  if (isRateLimited(`login:${email}`, 10, 15 * 60 * 1000)) {
+    return { error: 'Muitas tentativas de login. Aguarde 15 minutos.' };
+  }
 
   const valid = loginSchema.safeParse({ email, password });
   if (!valid.success) {
@@ -155,6 +180,12 @@ export async function loginAdminAction(prevState: any, formData: FormData) {
   const valid = adminSchema.safeParse({ email, password });
   if (!valid.success) {
     return { error: 'Dados inválidos.' };
+  }
+
+  // Rate limit: 5 attempts per 15 minutes per IP would be ideal,
+  // but since we don't have IP in server actions, use a global limit
+  if (isRateLimited('admin_login', 5, 15 * 60 * 1000)) {
+    return { error: 'Muitas tentativas. Aguarde 15 minutos.' };
   }
 
   const crypto = await import('crypto');

@@ -6,7 +6,9 @@ import { revalidatePath } from 'next/cache';
 
 // AbacatePay's fixed public key used to sign all webhook payloads
 // Source: https://docs.abacatepay.com/pages/webhooks
+// Falls back to the known public key if the env var is not set.
 const ABACATEPAY_PUBLIC_KEY =
+  process.env.ABACATEPAY_PUBLIC_KEY ??
   't9dXRhHHo3yDEj5pVDYz0frf7q6bMKyMRmxxCPIPp3RCplBfXRxqlC6ZpiWmOqj4L63qEaeUOtrCI8P0VMUgo6iIga2ri9ogaHFs0WIIywSMg0q7RmBfybe1E5XJcfC4IW3alNqym0tXoAKkzvfEjZxV6bE0oG2zJrNNYmUCKZyV0KZ3JS8Votf9EAWWYdiDkMkpbMdPggfh1EqHlVkMiTady6jOR3hyzGEHrIz2Ret0xHKMbiqkr9HS1JhNHDX9';
 
 function verifyWebhookSignature(rawBody: string, signature: string | null): boolean {
@@ -125,8 +127,9 @@ export async function POST(request: Request) {
   }
 
   const event = body.event;
-  console.log('📥 Webhook event:', event, '| devMode:', body.devMode);
-  console.log('📥 Webhook data:', JSON.stringify(body.data, null, 2));
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('📥 Webhook event:', event, '| devMode:', body.devMode);
+  }
 
   // Accept both old (billing.paid) and new (checkout.completed) event names
   const isPaidEvent =

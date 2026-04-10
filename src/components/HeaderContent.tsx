@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, LogOut } from 'lucide-react';
+import { logoutAction } from '@/server/auth-actions';
 
 interface HeaderContentProps {
     user: any;
@@ -68,6 +69,17 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                         <span className="text-sm" style={{ color: '#7A7A8A' }}>
                             Olá, <strong style={{ color: '#F0EAD6' }}>{user.name}</strong>
                         </span>
+                        <form action={logoutAction}>
+                            <button
+                                type="submit"
+                                className="flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-all hover:bg-[#E63946]/10"
+                                style={{ color: '#E63946', border: '1px solid rgba(230,57,70,0.25)' }}
+                                title="Sair"
+                            >
+                                <LogOut size={14} />
+                                Sair
+                            </button>
+                        </form>
                     </>
                 ) : (
                     <>
@@ -121,18 +133,30 @@ export default function HeaderContent({ user }: HeaderContentProps) {
                         style={{ borderTop: '1px solid #2A2A32' }}
                     >
                         {user ? (
-                            <Link
-                                href="/meus-tickets"
-                                className="w-full py-3 text-center font-bold rounded-lg"
-                                style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
-                                onClick={() => setIsMenuOpen(false)}
-                            >
-                                Meus Tickets
-                            </Link>
+                            <>
+                                <Link
+                                    href="/meus-tickets"
+                                    className="w-full py-3 text-center font-bold rounded-lg"
+                                    style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Meus Tickets
+                                </Link>
+                                <form action={logoutAction}>
+                                    <button
+                                        type="submit"
+                                        className="w-full py-3 flex items-center justify-center gap-2 font-bold rounded-lg transition-all hover:bg-[#E63946]/10"
+                                        style={{ border: '1px solid rgba(230,57,70,0.3)', color: '#E63946' }}
+                                    >
+                                        <LogOut size={16} />
+                                        Sair da Conta
+                                    </button>
+                                </form>
+                            </>
                         ) : (
                             <>
                                 <Link
-                                    href="/login"
+                                    href="/register"
                                     className="w-full py-3 text-center font-bold rounded-lg"
                                     style={{ border: '1px solid #2A2A32', color: '#F0EAD6' }}
                                     onClick={() => setIsMenuOpen(false)}

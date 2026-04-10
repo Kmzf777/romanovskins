@@ -1,4 +1,4 @@
-import { createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient, createClient } from '@/lib/supabase/server';
 import { abacatePay } from '@/lib/abacatepay';
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
@@ -11,6 +11,29 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Missing tid' }, { status: 400 });
   }
 
+  // Require the caller to be the authenticated owner of the transaction,
+  // OR an internal server-side call (same origin / no-cors fetch from success page).
+  // We verify by checking that the transaction's user_id matches the session user.
+  // Internal calls from the success page SSR are allowed because they use the
+  // service-role client to read the transaction first, then call this endpoint
+  // from server-side. We accept those by checking the Referer or a shared secret header.
+  const internalSecret = request.headers.get('x-internal-secret');
+  const expectedInternal = process.env.INTERNAL_API_SECRET ?? '';
+
+  let callerUserId: string | null = null;
+  if (expectedInternal && internalSecret === expectedInternal) {
+    // Trusted internal server-to-server call (e.g., from success page SSR)
+    callerUserId = null; // will skip ownership check below
+  } else {
+    // Verify Supabase session from cookies
+    const supabaseUser = await createClient();
+    const { data: { user } } = await supabaseUser.auth.getUser();
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    callerUserId = user.id;
+  }
+
   const supabase = createAdminClient();
 
   const { data: transaction, error: txError } = await supabase
@@ -21,6 +44,11 @@ export async function GET(request: Request) {
 
   if (txError || !transaction) {
     return NextResponse.json({ status: 'not_found' }, { status: 404 });
+  }
+
+  // Ownership check: authenticated users may only query their own transactions
+  if (callerUserId !== null && transaction.user_id !== callerUserId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   }
 
   if (transaction.status === 'paid') {

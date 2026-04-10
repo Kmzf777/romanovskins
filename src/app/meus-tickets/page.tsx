@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from '@/server/auth-actions';
 import { redirect } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Trophy, Ticket } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -84,11 +85,15 @@ export default async function MeusTicketsPage() {
                                 <div className="flex gap-4 p-5">
                                     {/* Image */}
                                     {raffle?.image_url && (
-                                        <img
-                                            src={raffle.image_url}
-                                            alt={raffle.title}
-                                            className="w-20 h-20 rounded-xl object-cover shrink-0"
-                                        />
+                                        <div className="relative w-20 h-20 rounded-xl overflow-hidden shrink-0">
+                                            <Image
+                                                src={raffle.image_url}
+                                                alt={raffle.title}
+                                                fill
+                                                className="object-cover"
+                                                sizes="80px"
+                                            />
+                                        </div>
                                     )}
 
                                     {/* Content */}

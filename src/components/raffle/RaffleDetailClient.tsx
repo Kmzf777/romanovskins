@@ -7,6 +7,7 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import Link from 'next/link';
+import Image from 'next/image';
 import { ChevronLeft, Ticket } from 'lucide-react';
 
 export function RaffleDetailClient({ raffle, tickets, userId }: any) {
@@ -61,11 +62,14 @@ export function RaffleDetailClient({ raffle, tickets, userId }: any) {
                         className="rounded-2xl overflow-hidden aspect-square relative"
                         style={{ backgroundColor: '#111114', border: '1px solid #2A2A32' }}
                     >
-                        <img
+                        <Image
                             src={raffle.image_url}
                             alt={raffle.title}
-                            className="w-full h-full object-cover"
+                            fill
+                            className="object-cover"
+                            sizes="(max-width: 1024px) 100vw, 384px"
                             style={{ filter: 'drop-shadow(0 0 30px rgba(245,197,24,0.2))' }}
+                            priority
                         />
                         {/* Badges */}
                         <div className="absolute top-3 right-3 flex flex-col gap-1.5 items-end">
@@ -181,11 +185,12 @@ export function RaffleDetailClient({ raffle, tickets, userId }: any) {
             {/* Sticky CTA */}
             {selectedNumbers.length > 0 && (
                 <div
-                    className="fixed bottom-0 left-0 w-full flex items-center justify-between gap-4 px-6 py-4 z-50"
+                    className="fixed bottom-0 left-0 w-full flex items-center justify-between gap-4 px-6 py-4 z-[9999]"
                     style={{
                         backgroundColor: 'rgba(10,10,11,0.95)',
                         backdropFilter: 'blur(16px)',
                         borderTop: '1px solid #2A2A32',
+                        pointerEvents: 'auto',
                     }}
                 >
                     <div>

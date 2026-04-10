@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { redirect } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Clock, Hash, Calendar, Ticket, CreditCard, AlertCircle } from 'lucide-react';
 import { createAdminClient } from '@/lib/supabase/server';
@@ -12,6 +13,11 @@ export default async function CheckoutSuccessPage({
   searchParams: Promise<{ tid?: string }>;
 }) {
   const { tid } = await searchParams;
+
+  if (!tid) {
+    redirect('/meus-tickets');
+  }
+
   const supabase = createAdminClient();
 
   let transaction: any = null;
@@ -29,7 +35,12 @@ export default async function CheckoutSuccessPage({
       if (transData.status === 'pending') {
         const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://romanovdasrifas.vercel.app';
         try {
-          await fetch(`${appUrl}/api/confirm-payment?tid=${tid}`, { cache: 'no-store' });
+          await fetch(`${appUrl}/api/confirm-payment?tid=${tid}`, {
+            cache: 'no-store',
+            headers: {
+              'x-internal-secret': process.env.INTERNAL_API_SECRET ?? '',
+            },
+          });
           // Re-fetch transaction after confirmation attempt
           const { data: refreshed } = await supabase
             .from('transactions')

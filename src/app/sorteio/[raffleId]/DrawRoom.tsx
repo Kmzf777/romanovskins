@@ -10,7 +10,7 @@ function Overlay({ children }: { children: React.ReactNode }) {
   return (
     <>
       <style>{`
-        .dl-overlay {
+        .dl-overlay-bg {
           background-color: #090704;
           background-image: url('/dlore9-16.png');
           background-size: cover;
@@ -18,13 +18,16 @@ function Overlay({ children }: { children: React.ReactNode }) {
           background-repeat: no-repeat;
         }
         @media (min-width: 640px) {
-          .dl-overlay {
+          .dl-overlay-bg {
             background-image: url('/dlore16-9.png');
             background-position: center center;
           }
         }
       `}</style>
-      <div className="dl-overlay fixed inset-0 z-[100] overflow-y-auto overflow-x-hidden">
+      {/* Background layer — fixed, never scrolls */}
+      <div className="dl-overlay-bg fixed inset-0 z-[100]" aria-hidden="true" />
+      {/* Content layer — scrollable, sits on top of background */}
+      <div className="fixed inset-0 z-[101] overflow-y-auto overflow-x-hidden">
         {children}
       </div>
     </>

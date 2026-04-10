@@ -4,6 +4,29 @@ import { abacatePay } from '@/lib/abacatepay';
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import crypto from 'crypto';
 
+function validateCPF(cpf: string): boolean {
+  const digits = cpf.replace(/\D/g, '');
+  if (digits.length !== 11) return false;
+  // Reject all-same digits (e.g. 111.111.111-11)
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  // First digit check
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i);
+  let remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits[9])) return false;
+
+  // Second digit check
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i);
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits[10])) return false;
+
+  return true;
+}
+
 export async function createCheckoutAction(raffleId: string, taxId: string) {
     const supabase = await createClient();
     const { getCurrentUser } = await import('@/server/auth-actions');
@@ -45,6 +68,9 @@ export async function createCheckoutAction(raffleId: string, taxId: string) {
         const phoneDigits = user.whatsapp.replace(/\D/g, '');
 
         const taxIdDigits = taxId.replace(/\D/g, '');
+        if (!validateCPF(taxIdDigits)) {
+            return { error: 'CPF inválido. Verifique os dígitos informados.' };
+        }
 
         const payload = {
             frequency: 'ONE_TIME',
@@ -67,11 +93,7 @@ export async function createCheckoutAction(raffleId: string, taxId: string) {
             }
         };
 
-        console.log('📤 Creating billing:', JSON.stringify(payload, null, 2));
-
         const response = await abacatePay.post('/billing/create', payload);
-
-        console.log('📥 AbacatePay full response:', JSON.stringify(response.data, null, 2));
 
         const billingData = response.data?.data ?? response.data;
 

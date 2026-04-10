@@ -1,5 +1,16 @@
+import type { Metadata } from 'next';
 import { getAllWinners } from '@/server/raffle-actions';
 import { WinnerHallCard } from '@/components/ui/winner-hall-card';
+
+export const metadata: Metadata = {
+  title: 'Ganhadores',
+  description: 'Veja todos os ganhadores das rifas Romanov. Sorteios realizados com transparência pela Loteria Federal.',
+  openGraph: {
+    title: 'Ganhadores | Romanov Rifas',
+    description: 'Confira os ganhadores das rifas de skins CS2 sorteadas pela Loteria Federal.',
+    type: 'website',
+  },
+};
 
 export const dynamic = 'force-dynamic';
 

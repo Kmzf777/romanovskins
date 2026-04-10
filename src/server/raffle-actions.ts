@@ -286,6 +286,18 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
         return { success: true };
     }
 
+    // Input validation: prevent abuse with excessive ticket counts
+    if (!Array.isArray(numbers) || numbers.length === 0) {
+        return { success: false, error: 'Nenhuma cota selecionada.' };
+    }
+    if (numbers.length > 200) {
+        return { success: false, error: 'Máximo de 200 cotas por compra.' };
+    }
+    // Ensure all values are positive integers
+    if (numbers.some(n => !Number.isInteger(n) || n < 1)) {
+        return { success: false, error: 'Números de cota inválidos.' };
+    }
+
     const supabase = createAdminClient();
     const { getCurrentUser } = await import('@/server/auth-actions');
     const currentUser = await getCurrentUser();
@@ -319,8 +331,7 @@ export async function reserveTicketsAction(raffleId: string, numbers: number[]) 
         .select();
 
     if (error) {
-        console.error('Reservation error:', JSON.stringify(error, null, 2));
-        console.error('Reservation details:', { raffleId, numbers, userId });
+        console.error('Reservation error for raffle', raffleId, ':', error.message);
         return { success: false, error: `Erro ao tentar reservar cotas: ${error.message || 'Erro desconhecido'}` };
     }
 
@@ -427,6 +438,13 @@ export async function getAllRafflesAdmin() {
 
 export async function closeRaffleAction(raffleId: string) {
     if (!checkEnv()) return { success: true };
+
+    // Verifica autenticação admin
+    const { cookies } = await import('next/headers');
+    const cookieStore = await cookies();
+    if (!isAdminTokenValid(cookieStore.get('admin_session')?.value)) {
+        return { success: false, error: 'Não autorizado.' };
+    }
 
     const supabase = createAdminClient();
     const { error } = await supabase

@@ -1,6 +1,17 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import { HowItWorksSection } from '@/components/ui/how-it-works-section';
 import { ShieldCheck, Scale, Zap, ChevronDown, ChevronUp } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: 'Como Funciona',
+  description: 'Entenda como funcionam as rifas Romanov: compre cotas, aguarde o sorteio pela Loteria Federal e receba sua skin CS2 imediatamente.',
+  openGraph: {
+    title: 'Como Funciona | Romanov Rifas',
+    description: 'Processo 100% transparente: sorteio pela Loteria Federal, pagamento via PIX e entrega garantida da skin.',
+    type: 'website',
+  },
+};
 
 const faqs = [
     {

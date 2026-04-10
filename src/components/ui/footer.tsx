@@ -31,7 +31,7 @@ export default function Footer({ stats }: FooterProps) {
 
     return (
         <footer
-            className="relative z-10 mt-24"
+            className="relative z-10 mt-24 isolate"
             style={{ borderTop: '1px solid #2A2A32' }}
         >
             <div className="max-w-6xl mx-auto px-6 md:px-10 py-16">

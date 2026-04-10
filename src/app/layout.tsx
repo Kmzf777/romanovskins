@@ -19,13 +19,41 @@ const bebasNeue = Bebas_Neue({
 });
 
 export const metadata: Metadata = {
-  title: "Romanov Rifas | Skins de CS2",
-  description: "Concorra a skins raras de CS2. Rifas com pagamento via PIX, sorteio transparente pela Loteria Federal e entrega imediata.",
+  metadataBase: new URL('https://romanovdasrifas.vercel.app'),
+  title: {
+    default: 'Romanov Rifas | Skins de CS2',
+    template: '%s | Romanov Rifas',
+  },
+  description: 'Concorra a skins raras de CS2 com rifas a partir de R$0,50. Sorteio transparente pela Loteria Federal, pagamento via PIX e entrega imediata da skin.',
+  keywords: ['rifa cs2', 'skin cs2', 'rifa skins', 'rifas online', 'rifa pix', 'cs2 raffle', 'romanov rifas'],
+  authors: [{ name: 'Romanov Rifas' }],
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+    },
+  },
   openGraph: {
-    title: "Romanov Rifas | Skins de CS2",
-    description: "Concorra a skins raras de CS2. Rifas com pagamento via PIX e sorteio transparente.",
-    type: "website",
-    images: ["/logo-icon.png"],
+    title: 'Romanov Rifas | Skins de CS2',
+    description: 'Concorra a skins raras de CS2. Rifas com pagamento via PIX, sorteio transparente pela Loteria Federal e entrega imediata.',
+    type: 'website',
+    locale: 'pt_BR',
+    siteName: 'Romanov Rifas',
+    images: [{
+      url: '/logo-icon.png',
+      width: 400,
+      height: 400,
+      alt: 'Romanov Rifas',
+    }],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Romanov Rifas | Skins de CS2',
+    description: 'Concorra a skins raras de CS2 com rifas a partir de R$0,50.',
+    images: ['/logo-icon.png'],
   },
 };
 
